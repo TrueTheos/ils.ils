@@ -1,17 +1,5 @@
-let y = (10 - 2 * 3) / 2;
-let x = 7; // first
-// first
-if (0) {
-    x = 1;
-} elif (0) {
-    x = 2;
-} else {
-    x = 3;
-}
-
-print(1);
-exit(x);
-
-/*
-exit(4);
-*/
+let x = 7;
+let y = 91;
+print(y);
+exit(1+1);
+exit(y);

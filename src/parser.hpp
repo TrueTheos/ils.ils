@@ -10,6 +10,10 @@ struct NodeTermIntLit {
     Token int_lit;
 };
 
+struct NodeTermStrLit {
+    Token str_lit;
+};
+
 struct NodeTermIdent {
     Token ident;
 };
@@ -45,11 +49,11 @@ struct NodeBinExpr {
 };
 
 struct NodeTerm {
-    std::variant<NodeTermIntLit*, NodeTermIdent*, NodeTermParen*> var;
+    std::variant<NodeTermIntLit*, NodeTermStrLit*, NodeTermIdent*, NodeTermParen*> var;
 };
 
 struct NodeExpr {
-    std::variant<NodeTerm*, NodeBinExpr*> var;
+    std::variant<NodeTerm*, NodeBinExpr*> var; 
 };
 
 struct NodeStmtExit {
@@ -131,6 +135,19 @@ public:
             auto expr_ident = m_allocator.emplace<NodeTermIdent>(ident.value());
             auto term = m_allocator.emplace<NodeTerm>(expr_ident);
             return term;
+        }
+        if(try_consume(TokenType::QUOTATION))
+        {
+            if(auto str_lit = try_consume(TokenType::STR_LITERAL))
+            {
+                if(try_consume(TokenType::QUOTATION))
+                {
+                    auto term_str_lit = m_allocator.emplace<NodeTermStrLit>(str_lit.value());
+                    auto term = m_allocator.emplace<NodeTerm>(term_str_lit);
+                    return term;
+                }
+            }
+            
         }
         if (const auto open_paren = try_consume(TokenType::OPEN_PARENTHESIS)) {
             auto expr = parse_expr();
@@ -272,11 +289,26 @@ public:
             consume();
             consume();
             auto stmt_print = m_allocator.emplace<NodeStmtPrint>();
-            if (const auto node_expr = parse_expr()) {
-                stmt_print->expr = node_expr.value();
+
+            if(expect(TokenType::QUOTATION))
+            {
+                consume();
+
+                if (const auto node_expr = parse_expr()) {
+                    stmt_print->expr = node_expr.value();
+                }
+                else {
+                    error_expected("str_literal");
+                }
             }
-            else {
-                error_expected("expression");
+            else
+            {
+                if (const auto node_expr = parse_expr()) {
+                    stmt_print->expr = node_expr.value();
+                }
+                else {
+                    error_expected("expression");
+                }
             }
             try_consume_err(TokenType::CLOSE_PARENTHESIS);
             try_consume_err(TokenType::SEMICOLON);

@@ -6,6 +6,8 @@
 enum class TokenType {
     EXIT,
     INT_LITERAL,
+    STR_LITERAL,
+    QUOTATION,
     SEMICOLON,
     OPEN_PARENTHESIS,
     CLOSE_PARENTHESIS,
@@ -33,6 +35,10 @@ inline std::string to_string(const TokenType type)
         return "`EXIT`";
     case TokenType::INT_LITERAL:
         return "int literal";
+    case TokenType::STR_LITERAL:
+        return "str literal";
+    case TokenType::QUOTATION:
+        return "`\"`";
     case TokenType::SEMICOLON:
         return "`;`";
     case TokenType::OPEN_PARENTHESIS:
@@ -105,6 +111,7 @@ class Tokenizer
             while (peek().has_value()) {
                 if (std::isalpha(peek().value())) {
                     buf.push_back(consume());
+                    //maybe here if the last token was a " we can ignore checking for numbers etc
                     while (peek().has_value() && std::isalnum(peek().value())) {
                         buf.push_back(consume());
                     }
@@ -130,6 +137,11 @@ class Tokenizer
                     }
                     else if (buf == "else") {
                         tokens.push_back({ TokenType::ELSE_, line_count });
+                        buf.clear();
+                    }
+                    else if(tokens.back().type == TokenType::QUOTATION)
+                    {
+                        tokens.push_back({TokenType::STR_LITERAL});
                         buf.clear();
                     }
                     else {
@@ -207,6 +219,11 @@ class Tokenizer
                 else if (peek().value() == '}') {
                     consume();
                     tokens.push_back({ TokenType::CLOSE_CURLY, line_count });
+                }
+                else if (peek().value() == '"')
+                {
+                    consume();
+                    tokens.push_back({TokenType::QUOTATION, line_count});
                 }
                 else if (peek().value() == '\n') {
                     consume();

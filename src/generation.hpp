@@ -23,6 +23,12 @@ public:
                 gen.push("rax");
             }
 
+            void operator()(const NodeTermStrLit* term_str_lit) const
+            {
+                std::string litName = "lit" + gen._strLiterals.size();
+                gen._strLiterals.push_back({ litName, term_str_lit->str_lit.value.value() }); 
+            }
+
             void operator()(const NodeTermIdent* term_ident) const
             {
                 const auto it = std::ranges::find_if(std::as_const(gen.m_vars), [&](const Var& var) {
@@ -40,7 +46,7 @@ public:
             void operator()(const NodeTermParen* term_paren) const
             {
                 gen.gen_expr(term_paren->expr);
-            }
+            }    
         };
         TermVisitor visitor({ .gen = *this });
         std::visit(visitor, term->var);
@@ -116,6 +122,32 @@ public:
         std::visit(visitor, expr->var);
     }
 
+    void gen_printArg(const NodeStmtPrint* prt)
+    {
+        struct PrintArgVisitor{
+            Generator& gen;
+
+            /*
+             
+            */
+
+            /*
+            gen.m_output << "    load rdi, litName\n";
+                gen.m_output << "    mov rax, length\n";
+                gen.m_output << "    call print_string\n";
+                gen.m_output << "\n";  
+                gen.m_output << "    length: equ $-litName\n";
+            */
+        };
+
+        gen_expr(prt->expr);
+        pop("rax");
+        m_output << "    call print_number\n";
+
+        PrintArgVisitor visitor { .gen = *this };
+        //std::visit(visitor, prt->expr->var);
+    }
+
     void gen_scope(const NodeScope* scope)
     {
         begin_scope();
@@ -165,31 +197,33 @@ public:
 
             void operator()(const NodeStmtExit* stmt_exit) const
             {
-                gen.m_output << "    ;; exit\n";
+                gen.m_output << "    ; exit\n";
                 gen.gen_expr(stmt_exit->expr);
                 gen.m_output << "    mov rax, 60\n";
                 gen.pop("rdi");
                 gen.m_output << "    syscall\n";
-                gen.m_output << "    ;; /exit\n";
+                gen.m_output << "\n";
             }
 
             void operator()(const NodeStmtPrint* stmt_print) const
             {
-                gen.m_output << "    ;; print\n";
-                //gen.gen_expr(stmt_print->expr);
-                gen.m_output << "    mov rdi, 1\n";
-                gen.m_output << "    mov rsi, message\n"; 
-                gen.m_output << "    mov rdx, length\n"; 
-                gen.m_output << "    mov rax, 1\n"; 
-                gen.m_output << "    syscall\n";
-                gen.m_output << "    ;; /print\n";
-                gen.m_output << "    message: db 'hello world!',10\n";
-                gen.m_output << "    length: equ $-message\n";
+                gen.m_output << "    ; print\n"; 
+
+                gen.gen_printArg(stmt_print);
+                
+                //gen.m_output << "    mov rax, 12345\n";
+                //gen.m_output << "    call print_number\n";
+                /*gen.m_output << "    mov rdi, message\n";
+                gen.m_output << "    mov rax, length\n";
+                gen.m_output << "    call print_string\n";
+                gen.m_output << "\n";  
+                gen.m_output << "    message: dd 'test',10\n"; 
+                gen.m_output << "    length: equ $-message\n";*/
             }
 
             void operator()(const NodeStmtLet* stmt_let) const
             {
-                gen.m_output << "    ;; let\n";
+                gen.m_output << "    ; let " << stmt_let->ident.value.value() << "\n";
                 if (std::ranges::find_if(
                         std::as_const(gen.m_vars),
                         [&](const Var& var) { return var.name == stmt_let->ident.value.value(); })
@@ -199,7 +233,7 @@ public:
                 }
                 gen.m_vars.push_back({ .name = stmt_let->ident.value.value(), .stack_loc = gen.m_stack_size });
                 gen.gen_expr(stmt_let->expr);
-                gen.m_output << "    ;; /let\n";
+                gen.m_output << "\n";
             }
 
             void operator()(const NodeStmtAssign* stmt_assign) const
@@ -250,6 +284,15 @@ public:
         std::visit(visitor, stmt->var);
     }
 
+    void gen_data_section()
+    {
+        m_output << "\nsection .data\n";
+        for(auto &stl : _strLiterals)
+        {
+            m_output << "    " << stl.name << ": db \"" << stl.text << "\", 0\n";
+        }
+    }
+
     [[nodiscard]] std::string gen_prog()
     {
         m_output << "global _start\n_start:\n";
@@ -258,9 +301,43 @@ public:
             gen_stmt(stmt);
         }
 
-        m_output << "    mov rax, 60\n";
+        /*m_output << "    mov rax, 60\n";
         m_output << "    mov rdi, 0\n";
+        m_output << "    syscall\n";*/
+
+        m_output << "print_number:\n";
+        m_output << "    push rax\n";
+        m_output << "    mov rcx, 10\n";
+        m_output << "    mov rbx, rsp\n";
+        m_output << "    add rbx, 20\n";
+        m_output << "    mov byte [rbx], 0\n";
+        m_output << ".convert_loop:\n";
+        m_output << "    dec rbx\n";
+        m_output << "    xor rdx, rdx\n";
+        m_output << "    div rcx\n";
+        m_output << "    add dl, '0'\n";
+        m_output << "    mov [rbx], dl\n";
+        m_output << "    test rax, rax\n";
+        m_output << "    jnz .convert_loop\n";
+        m_output << "    mov rsi, rbx\n";
+        m_output << "    mov rdx, 21\n";
+        m_output << "    mov rax, 1\n";
+        m_output << "    mov rdi, 1\n";
         m_output << "    syscall\n";
+        m_output << "    pop rax\n";
+        m_output << "    ret\n";
+
+        m_output << "print_string:\n";
+        m_output << ".print:\n";
+        m_output << "    mov rsi, rdi\n";
+        m_output << "    mov rdx, rax\n";
+        m_output << "    mov rax, 1\n";
+        m_output << "    mov rdi, 1\n";
+        m_output << "    syscall\n";
+        m_output << "    ret\n";
+
+        gen_data_section();
+
         return m_output.str();
     }
 
@@ -302,15 +379,23 @@ private:
         return ss.str();
     }
 
-    struct Var {
+    struct Var 
+    {
         std::string name;
         size_t stack_loc;
+    };
+
+    struct StringLiteral
+    {
+        std::string name;
+        std::string text;
     };
 
     const NodeProg m_prog;
     std::stringstream m_output;
     size_t m_stack_size = 0;
     std::vector<Var> m_vars {};
+    std::vector<StringLiteral> _strLiterals {};
     std::vector<size_t> m_scopes {};
     int m_label_count = 0;
 };

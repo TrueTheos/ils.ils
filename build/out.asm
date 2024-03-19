@@ -1,77 +1,64 @@
 global _start
 _start:
-    ;; let
-    mov rax, 2
-    push rax
-    mov rax, 3
-    push rax
-    mov rax, 2
-    push rax
-    pop rax
-    pop rbx
-    mul rbx
-    push rax
-    mov rax, 10
-    push rax
-    pop rax
-    pop rbx
-    sub rax, rbx
-    push rax
-    pop rax
-    pop rbx
-    div rbx
-    push rax
-    ;; /let
-    ;; let
+    ; let x
     mov rax, 7
     push rax
-    ;; /let
-    ;; if
-    mov rax, 0
+
+    ; let y
+    mov rax, 91
     push rax
+
+    ; print
+    push QWORD [rsp + 0]
     pop rax
-    test rax, rax
-    jz label0
+    call print_number
+    ; exit
+    mov rax, 1
+    push rax
     mov rax, 1
     push rax
     pop rax
-    mov [rsp + 0], rax
-    jmp label1
-label0:
-    ;; elif
-    mov rax, 0
+    pop rbx
+    add rax, rbx
     push rax
-    pop rax
-    test rax, rax
-    jz label2
-    mov rax, 2
-    push rax
-    pop rax
-    mov [rsp + 0], rax
-    jmp label1
-label2:
-    ;; else
-    mov rax, 3
-    push rax
-    pop rax
-    mov [rsp + 0], rax
-label1:
-    ;; /if
-    ;; print
-    mov rdi, 1
-    mov rsi, message
-    mov rdx, length
-    mov rax, 1
+    mov rax, 60
+    pop rdi
     syscall
-    ;; /print
-    message: db 'hello world!',10
-    length: equ $-message
-    ;; exit
+
+    ; exit
     push QWORD [rsp + 0]
     mov rax, 60
     pop rdi
     syscall
-    ;; /exit
-    mov rax, 60
-    mov rdi, 0
+
+print_number:
+    push rax
+    mov rcx, 10
+    mov rbx, rsp
+    add rbx, 20
+    mov byte [rbx], 0
+.convert_loop:
+    dec rbx
+    xor rdx, rdx
+    div rcx
+    add dl, '0'
+    mov [rbx], dl
+    test rax, rax
+    jnz .convert_loop
+    mov rsi, rbx
+    mov rdx, 21
+    mov rax, 1
+    mov rdi, 1
     syscall
+    pop rax
+    ret
+print_string:
+.print:
+    mov rsi, rdi
+    mov rdx, rax
+    mov rax, 1
+    mov rdi, 1
+    syscall
+    ret
+
+section .data
