@@ -1,0 +1,11 @@
+//comment
+
+number: uint8 = 10;
+    number: uint8(10..100) = 15;
+
+letter: char = 'c';
+word: string = "word";
+
+
+
+print();

@@ -1,0 +1,3 @@
+/mnt/c/Projects/ils.ils/build/CMakeFiles/ils.dir
+/mnt/c/Projects/ils.ils/build/CMakeFiles/edit_cache.dir
+/mnt/c/Projects/ils.ils/build/CMakeFiles/rebuild_cache.dir

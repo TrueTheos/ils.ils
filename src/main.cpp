@@ -1,0 +1,100 @@
+#include <fstream>
+#include <iostream>
+#include <optional>
+#include <sstream>
+#include <vector>
+#include <cstring>
+
+#include "generation.hpp"
+
+int main(int argc, char* argv[])
+{
+    std::string outputFile = "out"; // Output file
+    std::string inputFile; // Input file. Cannot be empty
+    bool debug = false; // Debug flag
+
+    /*
+    Arguments:
+    -o :: specifies the output file. Optional. Default: out
+    -d :: enables debug mode. Optional. Default: false
+
+    Debug: When true: Will create out.asm and out.o and will not delete them
+    */
+
+
+    if (argc < 2) { // The command needs to have atleast two arguments. 1st: executable 2nd: input file
+        std::cerr << "\u001B[31m \033[1m Error:\u001B[37m \033[0m Incorrect usage. Use -h argument for help!" << std::endl; // Use help menu instead of printing the usage
+        exit(EXIT_FAILURE); // Exit the program on error
+    }
+
+    // Argument loop
+    for (int i = 1; i < argc; ++i) {
+        if (std::strncmp(argv[i], "-o", 2) == 0) {
+            if (argv[i][2] != '\0') {
+                outputFile = argv[i] + 2;
+            } else if (i + 1 < argc && argv[i + 1][0] != '-') {
+                outputFile = argv[++i];
+            } else {
+                std::cerr << "\u001B[31m \033[1m Error:\u001B[37m \033[0m -o option requires an argument.\n";
+                return 1;
+            }
+        } else if (std::strcmp(argv[i], "-d") == 0) {
+            debug = true;
+        } else if (argv[i][0] == '-') {
+            std::cerr << "\u001B[31m \033[1m Error:\u001B[37m \033[0m Unrecognized argument '" << argv[i] << "'\n";
+            return 1;
+        } else {
+            inputFile = argv[i];
+        }
+    }
+
+    // No output file, that starts with '-' that would be wierd
+    // if (inputFile.starts_with("-")) {
+    //     std::cerr << "\u001B[31m \033[1m Error:\u001B[37m \033[0m Unknown Argument: " << inputFile << "! Use -h argument for help!"  << std::endl; // print error
+    //     exit(EXIT_FAILURE);
+    // }
+
+    // Check if input file name is provided
+    if (inputFile.empty()) {
+        std::cerr << "\u001B[31m \033[1m Error:\u001B[37m \033[0m Input file not provided." << std::endl; 
+        exit(EXIT_FAILURE);
+    }
+
+    std::string contents;
+    {
+        std::stringstream contents_stream;
+        std::fstream input(inputFile, std::ios::in);
+        contents_stream << input.rdbuf();
+        contents = contents_stream.str();
+    }
+
+    Tokenizer tokenizer(std::move(contents));
+    std::vector<Token> tokens = tokenizer.tokenize();
+
+    Parser parser(std::move(tokens));
+    std::optional<NodeProg> prog = parser.parse_prog();
+
+    if (!prog.has_value()) {
+        std::cerr << "\u001B[31m \033[1m Error:\u001B[37m \033[0m Invalid program" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    {
+        Generator generator(prog.value()); // Generate the assembly 
+        std::fstream file("out.asm", std::ios::out); // Opening the file
+        file << generator.gen_prog(); // Add input
+    }
+
+    std::string ldCmd = "ld out.o -o ";
+    ldCmd.append(outputFile);
+
+    system("nasm -felf64 out.asm");
+    system(ldCmd.c_str());
+
+    if (!debug) {
+        system("rm out.asm");
+        system("rm out.o");
+    }
+
+    return EXIT_SUCCESS;
+}
