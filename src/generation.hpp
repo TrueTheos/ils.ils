@@ -25,8 +25,9 @@ public:
 
             void operator()(const NodeTermStrLit* term_str_lit) const
             {
-                std::string litName = "lit" + gen._strLiterals.size();
-                gen._strLiterals.push_back({ litName, term_str_lit->str_lit.value.value() }); 
+                int size = gen._strLiterals.size();
+                std::string litName = "lit" + std::to_string(size);
+                gen._strLiterals.push_back({ .name = litName, .text = term_str_lit->str_lit.value.value() });            
             }
 
             void operator()(const NodeTermIdent* term_ident) const
@@ -127,25 +128,28 @@ public:
         struct PrintArgVisitor{
             Generator& gen;
 
+            void operator()(const NodeExpr* term) const
+            {
+                gen.gen_expr(term);
+                
+            }
+
             /*
-             
+                gen.pop("rax");
+                gen.m_output << "    call print_number\n";
             */
 
             /*
-            gen.m_output << "    load rdi, litName\n";
+                gen.m_output << "    load rdi, litName\n";
                 gen.m_output << "    mov rax, length\n";
                 gen.m_output << "    call print_string\n";
                 gen.m_output << "\n";  
                 gen.m_output << "    length: equ $-litName\n";
             */
         };
-
-        gen_expr(prt->expr);
-        pop("rax");
-        m_output << "    call print_number\n";
-
+       
         PrintArgVisitor visitor { .gen = *this };
-        //std::visit(visitor, prt->expr->var);
+        std::visit(visitor, prt->var);
     }
 
     void gen_scope(const NodeScope* scope)
@@ -205,6 +209,21 @@ public:
                 gen.m_output << "\n";
             }
 
+            void operator()(const NodeVarDeclare* stmt_vardeclare) const
+            {
+                gen.m_output << "    ; variable " << stmt_vardeclare->ident.value.value() << "\n";
+                if (std::ranges::find_if(
+                        std::as_const(gen.m_vars),
+                        [&](const Var& var) { return var.name == stmt_vardeclare->ident.value.value(); })
+                    != gen.m_vars.cend()) {
+                    std::cerr << "Variable already exists: " << stmt_vardeclare->ident.value.value() << std::endl;
+                    exit(EXIT_FAILURE);
+                }
+                gen.m_vars.push_back({ .name = stmt_vardeclare->ident.value.value(), .stack_loc = gen.m_stack_size });
+                gen.gen_expr(stmt_vardeclare->var.value());
+                gen.m_output << "\n";
+            }
+
             void operator()(const NodeStmtPrint* stmt_print) const
             {
                 gen.m_output << "    ; print\n"; 
@@ -221,7 +240,7 @@ public:
                 gen.m_output << "    length: equ $-message\n";*/
             }
 
-            void operator()(const NodeStmtLet* stmt_let) const
+            /*void operator()(const NodeStmtLet* stmt_let) const
             {
                 gen.m_output << "    ; let " << stmt_let->ident.value.value() << "\n";
                 if (std::ranges::find_if(
@@ -234,7 +253,7 @@ public:
                 gen.m_vars.push_back({ .name = stmt_let->ident.value.value(), .stack_loc = gen.m_stack_size });
                 gen.gen_expr(stmt_let->expr);
                 gen.m_output << "\n";
-            }
+            }*/
 
             void operator()(const NodeStmtAssign* stmt_assign) const
             {

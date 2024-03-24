@@ -1,1 +1,1 @@
-/usr/bin/c++ CMakeFiles/ils.dir/src/main.cpp.o -o ils 
+/usr/bin/g++ -g CMakeFiles/ils.dir/src/main.cpp.o -o ils 

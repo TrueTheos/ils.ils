@@ -9,10 +9,10 @@ enum class TokenType {
     STR_LITERAL,
     QUOTATION,
     SEMICOLON,
+    COLON,
     OPEN_PARENTHESIS,
     CLOSE_PARENTHESIS,
     IDENTIFIER,
-    LET,
     ASSIGN,
     PLUS,
     STAR,
@@ -24,6 +24,13 @@ enum class TokenType {
     ELIF,
     ELSE_,
     PRINT,
+
+    STR, //str
+    CHAR, //char
+    BOOL, //bool
+    INT, //int
+    TRUE, //true
+    FALSE, //false
 };
 
 inline std::string to_string(const TokenType type)
@@ -37,6 +44,18 @@ inline std::string to_string(const TokenType type)
         return "int literal";
     case TokenType::STR_LITERAL:
         return "str literal";
+    case TokenType::STR:
+        return "string";
+    case TokenType::INT:
+        return "int";
+    case TokenType::BOOL:
+        return "bool";
+    case TokenType::CHAR:
+        return "char";
+    case TokenType::TRUE:
+        return "true";
+    case TokenType::FALSE:
+        return "false";
     case TokenType::QUOTATION:
         return "`\"`";
     case TokenType::SEMICOLON:
@@ -47,8 +66,6 @@ inline std::string to_string(const TokenType type)
         return "`)`";
     case TokenType::IDENTIFIER:
         return "identifier";
-    case TokenType::LET:
-        return "`let`";
     case TokenType::ASSIGN:
         return "`=`";
     case TokenType::PLUS:
@@ -59,6 +76,8 @@ inline std::string to_string(const TokenType type)
         return "`-`";
     case TokenType::FSLASH:
         return "`/`";
+    case TokenType::COLON:
+        return ":";
     case TokenType::OPEN_CURLY:
         return "`{`";
     case TokenType::CLOSE_CURLY:
@@ -123,10 +142,6 @@ class Tokenizer
                         tokens.push_back({ TokenType::PRINT, line_count });
                         buf.clear();
                     }
-                    else if (buf == "let") {
-                        tokens.push_back({ TokenType::LET, line_count });
-                        buf.clear();
-                    }
                     else if (buf == "if") {
                         tokens.push_back({ TokenType::IF_, line_count });
                         buf.clear();
@@ -139,9 +154,38 @@ class Tokenizer
                         tokens.push_back({ TokenType::ELSE_, line_count });
                         buf.clear();
                     }
-                    else if(tokens.back().type == TokenType::QUOTATION)
+                    else if (buf == "str") {
+                        tokens.push_back({ TokenType::STR, line_count });
+                        buf.clear();
+                    }
+                    else if (buf == "int") {
+                        tokens.push_back({ TokenType::INT, line_count });
+                        buf.clear();
+                    }
+                    else if (buf == "char") {
+                        tokens.push_back({ TokenType::CHAR, line_count });
+                        buf.clear();
+                    }
+                    else if (buf == "bool") {
+                        tokens.push_back({ TokenType::BOOL, line_count });
+                        buf.clear();
+                    }
+                    else if (buf == "true") {
+                        tokens.push_back({ TokenType::TRUE, line_count });
+                        buf.clear();
+                    }
+                    else if (buf == "false") {
+                        tokens.push_back({ TokenType::FALSE, line_count });
+                        buf.clear();
+                    }
+                    else if(tokens.size() > 0 && tokens.back().type == TokenType::QUOTATION)
                     {
-                        tokens.push_back({TokenType::STR_LITERAL});
+                        while (peek().has_value() && (std::isdigit(peek().value()) || std::isalpha(peek().value()))) 
+                        {
+                            buf.push_back(consume());
+                        }
+
+                        tokens.push_back({TokenType::STR_LITERAL, line_count, buf});
                         buf.clear();
                     }
                     else {
@@ -219,6 +263,10 @@ class Tokenizer
                 else if (peek().value() == '}') {
                     consume();
                     tokens.push_back({ TokenType::CLOSE_CURLY, line_count });
+                }
+                else if (peek().value() == ':') {
+                    consume();
+                    tokens.push_back({ TokenType::COLON, line_count });
                 }
                 else if (peek().value() == '"')
                 {

@@ -1,0 +1,34 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      
+
+      {
+        "name": "debug [gdb]",
+        "type": "cppdbg",
+        "request": "launch",
+        "MIMode": "gdb",
+        "linux": {
+          "program": "${command:cmake.launchTargetPath}",
+          "miDebuggerPath": "/usr/bin/gdb"
+        },
+        "args": ["../test.ils", "-d"],
+        "cwd": "${workspaceFolder}",
+        "internalConsoleOptions": "openOnSessionStart",
+        "launchCompleteCommand": "exec-run",
+        "targetArchitecture": "x64",
+        "externalConsole": false,
+        "symbolLoadInfo": {
+          "loadAll": true,
+          "exceptionList": "",
+        },
+        "setupCommands": [
+          {
+            "description": "Enable pretty-printing for gdb",
+            "text": "-enable-pretty-printing",
+            "ignoreFailures": true
+          }
+        ]
+      }
+    ]    
+}

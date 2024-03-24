@@ -1,44 +1,5 @@
 global _start
 _start:
-    ; let x
-    mov rax, 7
-    push rax
-
-    ; let y
-    mov rax, 9
-    push rax
-
-    ; print
-    mov rax, 1
-    push rax
-    mov rax, 1
-    push rax
-    pop rax
-    pop rbx
-    add rax, rbx
-    push rax
-    pop rax
-    mov rax, 12345
-    call print_number
-    ; exit
-    mov rax, 1
-    push rax
-    mov rax, 1
-    push rax
-    pop rax
-    pop rbx
-    add rax, rbx
-    push rax
-    mov rax, 60
-    pop rdi
-    syscall
-
-    ; exit
-    push QWORD [rsp + 0]
-    mov rax, 60
-    pop rdi
-    syscall
-
 print_number:
     push rax
     mov rcx, 10
@@ -69,4 +30,4 @@ print_string:
     syscall
     ret
 
-
+section .data

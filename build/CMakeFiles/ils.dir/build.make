@@ -73,15 +73,15 @@ CMakeFiles/ils.dir/src/main.cpp.o: CMakeFiles/ils.dir/flags.make
 CMakeFiles/ils.dir/src/main.cpp.o: /mnt/c/Projects/ils.ils/src/main.cpp
 CMakeFiles/ils.dir/src/main.cpp.o: CMakeFiles/ils.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/mnt/c/Projects/ils.ils/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/ils.dir/src/main.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ils.dir/src/main.cpp.o -MF CMakeFiles/ils.dir/src/main.cpp.o.d -o CMakeFiles/ils.dir/src/main.cpp.o -c /mnt/c/Projects/ils.ils/src/main.cpp
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ils.dir/src/main.cpp.o -MF CMakeFiles/ils.dir/src/main.cpp.o.d -o CMakeFiles/ils.dir/src/main.cpp.o -c /mnt/c/Projects/ils.ils/src/main.cpp
 
 CMakeFiles/ils.dir/src/main.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/ils.dir/src/main.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /mnt/c/Projects/ils.ils/src/main.cpp > CMakeFiles/ils.dir/src/main.cpp.i
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /mnt/c/Projects/ils.ils/src/main.cpp > CMakeFiles/ils.dir/src/main.cpp.i
 
 CMakeFiles/ils.dir/src/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ils.dir/src/main.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/c/Projects/ils.ils/src/main.cpp -o CMakeFiles/ils.dir/src/main.cpp.s
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/c/Projects/ils.ils/src/main.cpp -o CMakeFiles/ils.dir/src/main.cpp.s
 
 # Object files for target ils
 ils_OBJECTS = \
