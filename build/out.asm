@@ -5,12 +5,20 @@ _start:
     push rax
 
     ; let y
-    mov rax, 91
+    mov rax, 9
     push rax
 
     ; print
-    push QWORD [rsp + 0]
+    mov rax, 1
+    push rax
+    mov rax, 1
+    push rax
     pop rax
+    pop rbx
+    add rax, rbx
+    push rax
+    pop rax
+    mov rax, 12345
     call print_number
     ; exit
     mov rax, 1
@@ -61,4 +69,4 @@ print_string:
     syscall
     ret
 
-section .data
+
