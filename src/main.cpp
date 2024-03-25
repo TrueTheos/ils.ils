@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
     {
         Generator generator(prog.value());
         std::fstream file("out.asm", std::ios::out);
-        file << generator.gen_prog();
+        file << generator.genProg();
     }
 
     std::string ldCmd = "ld out.o -o ";

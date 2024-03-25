@@ -7,6 +7,7 @@ enum class TokenType {
     EXIT,
     INT_LITERAL,
     STR_LITERAL,
+    CHAR_LITERAL,
     QUOTATION,
     SEMICOLON,
     COLON,
@@ -24,6 +25,7 @@ enum class TokenType {
     ELIF,
     ELSE_,
     PRINT,
+    SINGLE_QUOTATION,
 
     STR, //str
     CHAR, //char
@@ -44,6 +46,8 @@ inline std::string to_string(const TokenType type)
         return "int literal";
     case TokenType::STR_LITERAL:
         return "str literal";
+    case TokenType::CHAR_LITERAL:
+        return "char literal";
     case TokenType::STR:
         return "string";
     case TokenType::INT:
@@ -58,6 +62,8 @@ inline std::string to_string(const TokenType type)
         return "false";
     case TokenType::QUOTATION:
         return "`\"`";
+    case TokenType::SINGLE_QUOTATION:
+        return "'";
     case TokenType::SEMICOLON:
         return "`;`";
     case TokenType::OPEN_PARENTHESIS:
@@ -188,6 +194,24 @@ class Tokenizer
                         tokens.push_back({TokenType::STR_LITERAL, line_count, buf});
                         buf.clear();
                     }
+                    else if(tokens.size() > 0 && tokens.back().type == TokenType::SINGLE_QUOTATION)
+                    {
+                        while (peek().has_value() && (std::isdigit(peek().value()) || std::isalpha(peek().value()))) 
+                        {
+                            buf.push_back(consume());
+                        }
+
+                        if(buf.length() == 1)
+                        {
+                            tokens.push_back({TokenType::CHAR_LITERAL, line_count, buf});
+                            buf.clear();
+                        }
+                        else
+                        {
+                            std::cerr << "Expected 'char' but provided value is too long to be a 'char': '" << buf << "'" << std::endl;
+                            exit(EXIT_FAILURE);
+                        }
+                    }
                     else {
                         tokens.push_back({ TokenType::IDENTIFIER, line_count, buf });
                         buf.clear();
@@ -272,6 +296,11 @@ class Tokenizer
                 {
                     consume();
                     tokens.push_back({TokenType::QUOTATION, line_count});
+                }
+                else if (peek().value() == '\'')
+                {
+                    consume();
+                    tokens.push_back({TokenType::SINGLE_QUOTATION, line_count});
                 }
                 else if (peek().value() == '\n') {
                     consume();

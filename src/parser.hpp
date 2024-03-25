@@ -14,6 +14,14 @@ struct NodeTermStrLit {
     Token str_lit;
 };
 
+struct NodeTermCharLit {
+    Token char_lit;
+};
+
+struct NodeTermBoolLit {
+    Token bool_lit;
+};
+
 struct NodeTermIdent {
     Token ident;
 };
@@ -49,7 +57,7 @@ struct NodeBinExpr {
 };
 
 struct NodeTerm {
-    std::variant<NodeTermIntLit*, NodeTermStrLit*, NodeTermIdent*, NodeTermParen*> var;
+    std::variant<NodeTermIntLit*, NodeTermStrLit*, NodeTermIdent*, NodeTermCharLit*, NodeTermBoolLit*, NodeTermParen*> var;
 };
 
 struct NodeExpr {
@@ -142,6 +150,27 @@ class Parser
                     auto term = m_allocator.emplace<NodeTerm>(term_str_lit);
                     return term;
                 }
+            }
+            if(auto char_lit = try_consume(TokenType::CHAR_LITERAL))
+            {
+                if(try_consume(TokenType::SINGLE_QUOTATION))
+                {
+                    auto term_char_lit = m_allocator.emplace<NodeTermCharLit>(char_lit.value());
+                    auto term = m_allocator.emplace<NodeTerm>(term_char_lit);
+                    return term;
+                }
+            }
+            if(auto bool_lit = try_consume(TokenType::TRUE))
+            {
+                auto term_bool_lit = m_allocator.emplace<NodeTermBoolLit>(bool_lit.value());
+                auto term = m_allocator.emplace<NodeTerm>(term_bool_lit);
+                return term;
+            }
+            else if(auto bool_lit = try_consume(TokenType::FALSE))
+            {
+                auto term_bool_lit = m_allocator.emplace<NodeTermBoolLit>(bool_lit.value());
+                auto term = m_allocator.emplace<NodeTerm>(term_bool_lit);
+                return term;
             }
             if (auto ident = try_consume(TokenType::IDENTIFIER)) 
             {
