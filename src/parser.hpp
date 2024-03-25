@@ -473,11 +473,6 @@ class Parser
             return {};
         }
 
-        bool compareType(TokenType expectedToken, NodeExpr* node)
-        {
-
-        }
-
         std::optional<Token> try_consume(const TokenType type)
         {
             if (expect(type)) {

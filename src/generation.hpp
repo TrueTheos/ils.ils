@@ -32,15 +32,17 @@ public:
 
             void operator()(const NodeTermIdent* term_ident) const
             {
-                const auto it = std::ranges::find_if(std::as_const(gen.m_vars), [&](const Var& var) {
+                TokenType variableType;
+
+                const auto it = std::ranges::find_if(std::as_const(gen.vars), [&](const Var& var) {
                     return var.name == term_ident->ident.value.value();
                 });
-                if (it == gen.m_vars.cend()) {
+                if (it == gen.vars.cend()) {
                     std::cerr << "[" << term_ident->ident.line << "] " << "Undeclared identifier: " << term_ident->ident.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
                 std::stringstream offset;
-                offset << "QWORD [rsp + " << (gen.m_stack_size - it->stack_loc - 1) * 8 << "]";
+                offset << "QWORD [rsp + " << (gen.m_stack_size - it->stackLoc - 1) * 8 << "]";
                 gen.push(offset.str());
             }
 
@@ -212,16 +214,16 @@ public:
             void operator()(const NodeVarDeclare* stmt_vardeclare) const
             {
                 gen.m_output << "    ; variable " << stmt_vardeclare->ident.value.value() << "\n";
-                if (std::ranges::find_if(std::as_const(gen.m_vars), 
+                if (std::ranges::find_if(std::as_const(gen.vars), 
                     [&](const Var& var) 
                     { 
                         return var.name == stmt_vardeclare->ident.value.value(); 
-                    }) != gen.m_vars.cend()) 
+                    }) != gen.vars.cend()) 
                 {
                     std::cerr << "[" << stmt_vardeclare->ident.line << "] " << "Variable already exists: " << stmt_vardeclare->ident.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
-                gen.m_vars.push_back({ .name = stmt_vardeclare->ident.value.value(), .stack_loc = gen.m_stack_size });
+                gen.vars.push_back({ .name = stmt_vardeclare->ident.value.value(), .stackLoc = gen.m_stack_size });
                 gen.gen_expr(stmt_vardeclare->var.value());
                 gen.m_output << "\n";
             }
@@ -259,16 +261,16 @@ public:
 
             void operator()(const NodeStmtAssign* stmt_assign) const
             {
-                const auto it = std::ranges::find_if(gen.m_vars, [&](const Var& var) {
+                const auto it = std::ranges::find_if(gen.vars, [&](const Var& var) {
                     return var.name == stmt_assign->ident.value.value();
                 });
-                if (it == gen.m_vars.end()) {
+                if (it == gen.vars.end()) {
                     std::cerr << "[" << stmt_assign->ident.line << "] " <<"Undeclared identifier: " << stmt_assign->ident.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
                 gen.gen_expr(stmt_assign->expr);
                 gen.pop("rax");
-                gen.m_output << "    mov [rsp + " << (gen.m_stack_size - it->stack_loc - 1) * 8 << "], rax\n";
+                gen.m_output << "    mov [rsp + " << (gen.m_stack_size - it->stackLoc - 1) * 8 << "], rax\n";
             }
 
             void operator()(const NodeScope* scope) const
@@ -378,18 +380,18 @@ private:
 
     void begin_scope()
     {
-        m_scopes.push_back(m_vars.size());
+        m_scopes.push_back(vars.size());
     }
 
     void end_scope()
     {
-        const size_t pop_count = m_vars.size() - m_scopes.back();
+        const size_t pop_count = vars.size() - m_scopes.back();
         if (pop_count != 0) {
             m_output << "    add rsp, " << pop_count * 8 << "\n";
         }
         m_stack_size -= pop_count;
         for (size_t i = 0; i < pop_count; i++) {
-            m_vars.pop_back();
+            vars.pop_back();
         }
         m_scopes.pop_back();
     }
@@ -401,22 +403,22 @@ private:
         return ss.str();
     }
 
-    struct Var 
-    {
-        std::string name;
-        size_t stack_loc;
-    };
-
     struct StringLiteral
     {
         std::string name;
         std::string text;
     };
 
+    struct Var
+    {
+        std::string name;
+        size_t stackLoc;
+    };
+
     const NodeProg m_prog;
     std::stringstream m_output;
     size_t m_stack_size = 0;
-    std::vector<Var> m_vars {};
+    std::vector<Var> vars {};
     std::vector<StringLiteral> _strLiterals {};
     std::vector<size_t> m_scopes {};
     int m_label_count = 0;
@@ -429,28 +431,28 @@ class Variable
         Variable(const std::string& name) : name(name) {}
 };
 
-class IntVariable : Variable
+class IntVariable : public Variable
 {
     public:
         size_t stackLocation;
         IntVariable(const std::string& name, size_t stackLoc) : Variable(name) { stackLocation = stackLoc; }
 };
 
-class StrVariable : Variable
+class StrVariable : public Variable
 {
     public:
         std::string text;
         StrVariable(const std::string& name, std::string txt) : Variable(name) { text = txt; }
 };
 
-class BoolVariable : Variable
+class BoolVariable : public Variable
 {
     public:
         bool value;
         BoolVariable(const std::string& name, bool val) : Variable(name) { value = val; }
 };
 
-class CharVariable : Variable
+class CharVariable : public Variable
 {
     public:
         char character;
