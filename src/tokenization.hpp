@@ -281,7 +281,7 @@ class Tokenizer
                     consume();
                 }
                 else {
-                    std::cerr << "Invalid token" << std::endl;
+                    std::cerr << "Invalid token: '" << buf << "'" << std::endl;
                     exit(EXIT_FAILURE);
                 }
             }

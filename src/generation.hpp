@@ -36,7 +36,7 @@ public:
                     return var.name == term_ident->ident.value.value();
                 });
                 if (it == gen.m_vars.cend()) {
-                    std::cerr << "Undeclared identifier: " << term_ident->ident.value.value() << std::endl;
+                    std::cerr << "[" << term_ident->ident.line << "] " << "Undeclared identifier: " << term_ident->ident.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
                 std::stringstream offset;
@@ -212,11 +212,13 @@ public:
             void operator()(const NodeVarDeclare* stmt_vardeclare) const
             {
                 gen.m_output << "    ; variable " << stmt_vardeclare->ident.value.value() << "\n";
-                if (std::ranges::find_if(
-                        std::as_const(gen.m_vars),
-                        [&](const Var& var) { return var.name == stmt_vardeclare->ident.value.value(); })
-                    != gen.m_vars.cend()) {
-                    std::cerr << "Variable already exists: " << stmt_vardeclare->ident.value.value() << std::endl;
+                if (std::ranges::find_if(std::as_const(gen.m_vars), 
+                    [&](const Var& var) 
+                    { 
+                        return var.name == stmt_vardeclare->ident.value.value(); 
+                    }) != gen.m_vars.cend()) 
+                {
+                    std::cerr << "[" << stmt_vardeclare->ident.line << "] " << "Variable already exists: " << stmt_vardeclare->ident.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
                 gen.m_vars.push_back({ .name = stmt_vardeclare->ident.value.value(), .stack_loc = gen.m_stack_size });
@@ -261,7 +263,7 @@ public:
                     return var.name == stmt_assign->ident.value.value();
                 });
                 if (it == gen.m_vars.end()) {
-                    std::cerr << "Undeclared identifier: " << stmt_assign->ident.value.value() << std::endl;
+                    std::cerr << "[" << stmt_assign->ident.line << "] " <<"Undeclared identifier: " << stmt_assign->ident.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
                 gen.gen_expr(stmt_assign->expr);
@@ -361,6 +363,7 @@ public:
     }
 
 private:
+
     void push(const std::string& reg)
     {
         m_output << "    push " << reg << "\n";
@@ -417,4 +420,39 @@ private:
     std::vector<StringLiteral> _strLiterals {};
     std::vector<size_t> m_scopes {};
     int m_label_count = 0;
+};
+
+class Variable
+{
+    public:
+        std::string name;
+        Variable(const std::string& name) : name(name) {}
+};
+
+class IntVariable : Variable
+{
+    public:
+        size_t stackLocation;
+        IntVariable(const std::string& name, size_t stackLoc) : Variable(name) { stackLocation = stackLoc; }
+};
+
+class StrVariable : Variable
+{
+    public:
+        std::string text;
+        StrVariable(const std::string& name, std::string txt) : Variable(name) { text = txt; }
+};
+
+class BoolVariable : Variable
+{
+    public:
+        bool value;
+        BoolVariable(const std::string& name, bool val) : Variable(name) { value = val; }
+};
+
+class CharVariable : Variable
+{
+    public:
+        char character;
+        CharVariable(const std::string& name, char c) : Variable(name) { character = c; }
 };

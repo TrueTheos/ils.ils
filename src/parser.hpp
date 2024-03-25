@@ -122,7 +122,7 @@ class Parser
 
         void error_expected(const std::string& msg) const
         {
-            std::cerr << "[Parse Error] Expected " << msg << " on line " << peek(-1).value().line << std::endl;
+            std::cerr << "[" << peek(-1).value().line << "] " << "Expected " << msg << std::endl;
             exit(EXIT_FAILURE);
         }
 
@@ -143,7 +143,6 @@ class Parser
                     return term;
                 }
             }
-            return {};
             if (auto ident = try_consume(TokenType::IDENTIFIER)) 
             {
                 auto expr_ident = m_allocator.emplace<NodeTermIdent>(ident.value());
@@ -319,22 +318,6 @@ class Parser
                 stmt->var = stmt_print;
                 return stmt;
             }
-            /*if (expect(TokenType::LET) && expect(TokenType::IDENTIFIER, 1) && expect(TokenType::ASSIGN, 2)) {
-                consume();
-                auto stmt_let = m_allocator.emplace<NodeStmtLet>();
-                stmt_let->ident = consume();
-                consume();
-                if (const auto expr = parse_expr()) {
-                    stmt_let->expr = expr.value();
-                }
-                else {
-                    error_expected("expression");
-                }
-                try_consume_err(TokenType::SEMICOLON);
-                auto stmt = m_allocator.emplace<NodeStmt>();
-                stmt->var = stmt_let;
-                return stmt;
-            }*/
             if(expect(TokenType::IDENTIFIER))
             {
                 if(expect(TokenType::COLON, 1))
@@ -362,13 +345,30 @@ class Parser
                     NodeExpr* var;
 
                     if(try_consume(TokenType::ASSIGN))
-                    {
+                    {                        
                         if (const auto expr = parse_expr()) 
                         {
                             var = expr.value();
                         }
-                        else {
-                            error_expected("expression");
+                        else 
+                        {
+                            switch (varType.type)
+                            {
+                                case TokenType::STR:
+                                    error_expected("string");
+                                    break;
+                                case TokenType::INT:
+                                    error_expected("int literal or expression");
+                                    break;
+                                case TokenType::BOOL:
+                                    error_expected("bool");
+                                    break;
+                                case TokenType::CHAR:
+                                    error_expected("char");
+                                    break;
+                                default:
+                                    error_expected("value");
+                            }
                         }
 
                         try_consume_err(TokenType::SEMICOLON);
@@ -471,6 +471,11 @@ class Parser
             }
             error_expected(to_string(type));
             return {};
+        }
+
+        bool compareType(TokenType expectedToken, NodeExpr* node)
+        {
+
         }
 
         std::optional<Token> try_consume(const TokenType type)

@@ -1,1 +1,6 @@
-variable: int = 9;
+test: iasnt = 5;
+
+if(z)
+{
+
+}
