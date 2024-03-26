@@ -1,9 +1,0 @@
-a: int = 5;
-a = 10;
-
-while(a)
-{
-    a = a - 1;
-}
-
-exit(a);
