@@ -26,6 +26,7 @@ enum class TokenType {
     ELSE_,
     PRINT,
     SINGLE_QUOTATION,
+    WHILE,
 
     STR, //str
     CHAR, //char
@@ -94,6 +95,8 @@ inline std::string to_string(const TokenType type)
         return "`elif`";
     case TokenType::ELSE_:
         return "`else`";
+    case TokenType::WHILE:
+        return "`while`";
     }
     assert(false);
 }
@@ -182,6 +185,10 @@ class Tokenizer
                     }
                     else if (buf == "false") {
                         tokens.push_back({ TokenType::FALSE, line_count });
+                        buf.clear();
+                    }
+                    else if (buf == "while") {
+                        tokens.push_back({ TokenType::WHILE, line_count });
                         buf.clear();
                     }
                     else if(tokens.size() > 0 && tokens.back().type == TokenType::QUOTATION)

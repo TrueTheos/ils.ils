@@ -8,12 +8,32 @@ _start:
     push rax
     pop rax
     mov [rsp + 0], rax
+    ;; if
+    push QWORD [rsp + 0]
+    pop rax
+label0:
+    test rax, rax
+    jz label1
+    mov rax, 1
+    push rax
+    push QWORD [rsp + 8]
+    pop rax
+    pop rbx
+    add rax, rbx
+    push rax
+    pop rax
+    mov [rsp + 0], rax
+    jmp label0
+label1:
     ; exit
     push QWORD [rsp + 0]
     mov rax, 60
     pop rdi
     syscall
 
+    mov rax, 60
+    mov rdi, 69
+    syscall
 print_number:
     push rax
     mov rcx, 10

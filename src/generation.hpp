@@ -309,6 +309,22 @@ public:
                 gen._output << "    ;; /scope\n";
             }
 
+            void operator()(const NodeWhile* stmt_while) const
+            {
+                gen._output << "    ;; if\n";
+                gen.genExpr(stmt_while->expr);
+                gen.pop("rax");
+
+                const std::string whileStartLabel = gen.createLabel();
+                gen._output << whileStartLabel << ":\n";
+                gen._output << "    test rax, rax\n";
+                const std::string whileEndLabel = gen.createLabel();
+                gen._output << "    jz " << whileEndLabel << "\n";
+                gen.gen_scope(stmt_while->scope);
+                gen._output << "    jmp " << whileStartLabel << "\n";        
+                gen._output << whileEndLabel << ":\n";
+            }
+
             void operator()(const NodeStmtIf* stmt_if) const
             {
                 gen._output << "    ;; if\n";
@@ -366,13 +382,14 @@ public:
     {
         _output << "global _start\n_start:\n";
 
-        for (const NodeStmt* stmt : _prog.stmts) {
+        for (const NodeStmt* stmt : _prog.stmts) 
+        {
             genStmt(stmt);
         }
 
-        /*m_output << "    mov rax, 60\n";
-        m_output << "    mov rdi, 0\n";
-        m_output << "    syscall\n";*/
+        _output << "    mov rax, 60\n";
+        _output << "    mov rdi, 69\n";
+        _output << "    syscall\n";
 
         _output << "print_number:\n";
         _output << "    push rax\n";

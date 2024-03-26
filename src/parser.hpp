@@ -84,6 +84,12 @@ struct NodeScope {
     std::vector<NodeStmt*> stmts;
 };
 
+struct NodeWhile
+{
+    NodeExpr* expr {};
+    NodeScope* scope {};
+};
+
 struct NodeIfPred;
 
 struct NodeIfPredElif {
@@ -112,7 +118,7 @@ struct NodeStmtAssign {
 };
 
 struct NodeStmt {
-    std::variant<NodeStmtExit*, NodeVarDeclare*, NodeScope*, NodeStmtIf*, NodeStmtAssign*, NodeStmtPrint*> var;
+    std::variant<NodeStmtExit*, NodeVarDeclare*, NodeScope*, NodeStmtIf*, NodeStmtAssign*, NodeStmtPrint*, NodeWhile*> var;
 };
 
 struct NodeProg {
@@ -434,7 +440,6 @@ class Parser
                     return stmt;
                 }
             }     
-
         
             if (expect(TokenType::OPEN_CURLY)) {
                 if (auto scope = parse_scope()) {
@@ -461,6 +466,29 @@ class Parser
                 }
                 stmt_if->pred = parse_if_pred();
                 auto stmt = m_allocator.emplace<NodeStmt>(stmt_if);
+                return stmt;
+            }
+
+            if(auto _while = try_consume(TokenType::WHILE))
+            {
+                try_consume_err(TokenType::OPEN_PARENTHESIS);
+                auto stmt_while = m_allocator.emplace<NodeWhile>();
+                if(const auto expr = parse_expr())
+                {
+                    stmt_while->expr = expr.value();
+                }
+                else
+                {
+                    error_expected("expression");
+                }
+                try_consume_err(TokenType::CLOSE_PARENTHESIS);
+                if (const auto scope = parse_scope()) {
+                    stmt_while->scope = scope.value();
+                }
+                else {
+                    error_expected("scope");
+                }
+                auto stmt = m_allocator.emplace<NodeStmt>(stmt_while);
                 return stmt;
             }
             return {};
