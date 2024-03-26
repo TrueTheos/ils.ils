@@ -25,6 +25,9 @@ class ILS
                     Console.Write("\n");
                 }
             }
+
+            Parser parser = new Parser();
+            List<ASTStatement> statements = parser.Parse(tokens);
         }
         else
         {

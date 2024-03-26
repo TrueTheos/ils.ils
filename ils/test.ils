@@ -1,1 +1,1 @@
-test: int = 10;
+test: int = 10 + 1;

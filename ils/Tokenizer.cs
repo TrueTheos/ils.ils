@@ -172,6 +172,26 @@ namespace ils
                     Consume();
                     _tokens.Add(new(TokenType.SINGLE_QUATATION, lineCount, buffer));
                 }
+                else if (Expect("+"))
+                {
+                    Consume();
+                    _tokens.Add(new(TokenType.PLUS, lineCount, buffer));
+                }
+                else if (Expect("-"))
+                {
+                    Consume();
+                    _tokens.Add(new(TokenType.MINUS, lineCount, buffer));
+                }
+                else if (Expect("*"))
+                {
+                    Consume();
+                    _tokens.Add(new(TokenType.STAR, lineCount, buffer));
+                }
+                else if (Expect("/"))
+                {
+                    Consume();
+                    _tokens.Add(new(TokenType.SLASH, lineCount, buffer));
+                }
                 else if (Expect("\n"))
                 {
                     Consume();

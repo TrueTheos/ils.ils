@@ -16,6 +16,11 @@ namespace ils
         QUOTATION, // "
         SINGLE_QUATATION, // '
 
+        PLUS, // +
+        MINUS, // -
+        STAR, // *
+        SLASH, // /
+
         LITERAL_STR,
         LITERAL_INT,
         LITERAL_CHAR,
