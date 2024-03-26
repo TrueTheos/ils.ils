@@ -216,4 +216,5 @@ CMakeFiles/ils.dir/src/main.cpp.o: /mnt/c/Projects/ils.ils/src/main.cpp \
  /usr/include/c++/12/bits/uses_allocator_args.h \
  /usr/include/c++/12/pstl/glue_memory_defs.h /usr/include/c++/12/utility \
  /usr/include/c++/12/bits/stl_relops.h \
- /mnt/c/Projects/ils.ils/src/tokenization.hpp
+ /mnt/c/Projects/ils.ils/src/tokenization.hpp \
+ /mnt/c/Projects/ils.ils/src/variables.hpp

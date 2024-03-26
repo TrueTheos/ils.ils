@@ -4,6 +4,7 @@
 #include <cassert>
 
 #include "parser.hpp"
+#include "variables.hpp"
 
 class Generator {
 public:
@@ -27,14 +28,14 @@ public:
             {
                 int size = gen._strLiterals.size();
                 std::string litName = "strlit" + std::to_string(size);
-                gen._strLiterals.push_back({ .name = litName, .text = term_str_lit->str_lit.value.value() });            
+                gen._strLiterals.push_back(VARIABLES::StrVariable(litName,term_str_lit->str_lit.value.value()));            
             }
 
             void operator()(const NodeTermCharLit* term_char_lit) const
             {
                 int size = gen._charLiterals.size();
                 std::string litName = "charlit" + std::to_string(size);
-                gen._charLiterals.push_back({ .name = litName, .c = term_char_lit->char_lit.value.value() });            
+                gen._charLiterals.push_back(VARIABLES::CharVariable(litName, term_char_lit->char_lit.value.value()));            
             }
 
             void operator()(const NodeTermBoolLit* term_bool_lit) const
@@ -43,11 +44,11 @@ public:
                 std::string litName = "boolLit" + std::to_string(size);
                 if(term_bool_lit->bool_lit.type == TokenType::TRUE)
                 {
-                    gen._boolLiteral.push_back({ .name = litName, .val = true });         
+                    gen._boolLiteral.push_back(VARIABLES::BoolVariable(litName, true ));          
                 }
                 else if(term_bool_lit->bool_lit.type == TokenType::FALSE)
                 {
-                    gen._boolLiteral.push_back({ .name = litName, .val = false });         
+                    gen._boolLiteral.push_back(VARIABLES::BoolVariable(litName, false ));         
                 }
                 else
                 {
@@ -60,7 +61,7 @@ public:
             {
                 TokenType variableType;
 
-                const auto it = std::ranges::find_if(std::as_const(gen._intLiterals), [&](const IntLiteral& var) {
+                const auto it = std::ranges::find_if(std::as_const(gen._intLiterals), [&](const VARIABLES::IntVariable& var) {
                     return var.name == term_ident->ident.value.value();
                 });
                 if (it == gen._intLiterals.cend()) {
@@ -68,7 +69,7 @@ public:
                     exit(EXIT_FAILURE);
                 }
                 std::stringstream offset;
-                offset << "QWORD [rsp + " << (gen.m_stack_size - it->stackLoc - 1) * 8 << "]";
+                offset << "QWORD [rsp + " << (gen.m_stack_size - it->stackLocation - 1) * 8 << "]";
                 gen.push(offset.str());
             }
 
@@ -243,7 +244,7 @@ public:
             {
                 gen._output << "    ; variable " << stmt_vardeclare->ident.value.value() << "\n";
                 if (std::ranges::find_if(std::as_const(gen._intLiterals), 
-                    [&](const IntLiteral& var) 
+                    [&](const VARIABLES::IntVariable& var) 
                     { 
                         return var.name == stmt_vardeclare->ident.value.value(); 
                     }) != gen._intLiterals.cend()) 
@@ -251,7 +252,7 @@ public:
                     std::cerr << "[" << stmt_vardeclare->ident.line << "] " << "Variable already exists: " << stmt_vardeclare->ident.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
-                gen._intLiterals.push_back({ .name = stmt_vardeclare->ident.value.value(), .stackLoc = gen.m_stack_size });
+                gen._intLiterals.emplace_back(VARIABLES::IntVariable(stmt_vardeclare->ident.value.value(), gen.m_stack_size));
                 gen.genExpr(stmt_vardeclare->var.value());
                 gen._output << "\n";
             }
@@ -289,7 +290,7 @@ public:
 
             void operator()(const NodeStmtAssign* stmt_assign) const
             {
-                const auto it = std::ranges::find_if(gen._intLiterals, [&](const IntLiteral& var) {
+                const auto it = std::ranges::find_if(gen._intLiterals, [&](const VARIABLES::IntVariable& var) {
                     return var.name == stmt_assign->ident.value.value();
                 });
                 if (it == gen._intLiterals.end()) {
@@ -298,7 +299,7 @@ public:
                 }
                 gen.genExpr(stmt_assign->expr);
                 gen.pop("rax");
-                gen._output << "    mov [rsp + " << (gen.m_stack_size - it->stackLoc - 1) * 8 << "], rax\n";
+                gen._output << "    mov [rsp + " << (gen.m_stack_size - it->stackLocation - 1) * 8 << "], rax\n";
             }
 
             void operator()(const NodeScope* scope) const
@@ -345,18 +346,18 @@ public:
 
         for(auto &crl : _charLiterals)
         {
-            _output << "    " << crl.name << ": db '" << crl.c << "'";
+            _output << "    " << crl.name << ": db '" << crl.character << "'\n";
         }
 
         for(auto &bol : _boolLiteral)
         {
-            if(bol.val)
+            if(bol.value)
             {
-                _output << "    " << bol.name << ": db " << 1;
+                _output << "    " << bol.name << ": db " << 1 << "\n";
             }
             else
             {
-                _output << "    " << bol.name << ": db " << 1;
+                _output << "    " << bol.name << ": db " << 1 << "\n";
             }
         }
     }
@@ -410,7 +411,6 @@ public:
     }
 
 private:
-
     void push(const std::string& reg)
     {
         _output << "    push " << reg << "\n";
@@ -475,45 +475,10 @@ private:
     const NodeProg _prog;
     std::stringstream _output;
     size_t m_stack_size = 0;
-    std::vector<IntLiteral> _intLiterals {};
-    std::vector<StringLiteral> _strLiterals {};
-    std::vector<CharLiteral> _charLiterals {};
-    std::vector<BoolLiteral> _boolLiteral {};
+    std::vector<VARIABLES::IntVariable> _intLiterals {};
+    std::vector<VARIABLES::StrVariable> _strLiterals {};
+    std::vector<VARIABLES::CharVariable> _charLiterals {};
+    std::vector<VARIABLES::BoolVariable> _boolLiteral {};
     std::vector<size_t> _scopes {};
     int _labelCount = 0;
-};
-
-class Variable
-{
-    public:
-        std::string name;
-        Variable(const std::string& name) : name(name) {}
-};
-
-class IntVariable : public Variable
-{
-    public:
-        size_t stackLocation;
-        IntVariable(const std::string& name, size_t stackLoc) : Variable(name) { stackLocation = stackLoc; }
-};
-
-class StrVariable : public Variable
-{
-    public:
-        std::string text;
-        StrVariable(const std::string& name, std::string txt) : Variable(name) { text = txt; }
-};
-
-class BoolVariable : public Variable
-{
-    public:
-        bool value;
-        BoolVariable(const std::string& name, bool val) : Variable(name) { value = val; }
-};
-
-class CharVariable : public Variable
-{
-    public:
-        char character;
-        CharVariable(const std::string& name, char c) : Variable(name) { character = c; }
 };

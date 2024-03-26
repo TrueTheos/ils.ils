@@ -142,22 +142,28 @@ class Parser
                 auto term = m_allocator.emplace<NodeTerm>(term_int_lit);
                 return term;
             }
-            if(auto str_lit = try_consume(TokenType::STR_LITERAL))
+            if(try_consume(TokenType::QUOTATION))
             {
-                if(try_consume(TokenType::QUOTATION))
+                if(auto str_lit = try_consume(TokenType::STR_LITERAL))
                 {
-                    auto term_str_lit = m_allocator.emplace<NodeTermStrLit>(str_lit.value());
-                    auto term = m_allocator.emplace<NodeTerm>(term_str_lit);
-                    return term;
+                    if(try_consume(TokenType::QUOTATION))
+                    {
+                        auto term_str_lit = m_allocator.emplace<NodeTermStrLit>(str_lit.value());
+                        auto term = m_allocator.emplace<NodeTerm>(term_str_lit);
+                        return term;
+                    }
                 }
             }
-            if(auto char_lit = try_consume(TokenType::CHAR_LITERAL))
+            if(try_consume(TokenType::SINGLE_QUOTATION))
             {
-                if(try_consume(TokenType::SINGLE_QUOTATION))
+                if(auto char_lit = try_consume(TokenType::CHAR_LITERAL))
                 {
-                    auto term_char_lit = m_allocator.emplace<NodeTermCharLit>(char_lit.value());
-                    auto term = m_allocator.emplace<NodeTerm>(term_char_lit);
-                    return term;
+                    if(try_consume(TokenType::SINGLE_QUOTATION))
+                    {
+                        auto term_char_lit = m_allocator.emplace<NodeTermCharLit>(char_lit.value());
+                        auto term = m_allocator.emplace<NodeTerm>(term_char_lit);
+                        return term;
+                    }
                 }
             }
             if(auto bool_lit = try_consume(TokenType::TRUE))

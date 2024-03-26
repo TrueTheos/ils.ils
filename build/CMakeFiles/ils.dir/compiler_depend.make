@@ -273,7 +273,8 @@ CMakeFiles/ils.dir/src/main.cpp.o: /mnt/c/Projects/ils.ils/src/main.cpp \
   /usr/include/c++/12/pstl/glue_memory_defs.h \
   /usr/include/c++/12/utility \
   /usr/include/c++/12/bits/stl_relops.h \
-  /mnt/c/Projects/ils.ils/src/tokenization.hpp
+  /mnt/c/Projects/ils.ils/src/tokenization.hpp \
+  /mnt/c/Projects/ils.ils/src/variables.hpp
 
 
 /usr/include/c++/12/bits/stl_relops.h:
@@ -345,6 +346,8 @@ CMakeFiles/ils.dir/src/main.cpp.o: /mnt/c/Projects/ils.ils/src/main.cpp \
 /usr/include/c++/12/cassert:
 
 /usr/include/c++/12/bits/range_access.h:
+
+/mnt/c/Projects/ils.ils/src/variables.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/cpu-set.h:
 

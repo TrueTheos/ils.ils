@@ -1,6 +1,3 @@
-test: iasnt = 5;
-
-if(z)
-{
-
-}
+a: int = 5;
+a = 10;
+exit(a);
