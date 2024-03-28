@@ -18,16 +18,19 @@ class ILS
             int line = 1;
             foreach (Token token in tokens)
             {
-                Console.Write(token.tokenType.ToString() + " ");
-                if(token.line != line)
+                if (token.line != line)
                 {
                     line = token.line;
                     Console.Write("\n");
                 }
+                Console.Write(token.tokenType.ToString() + " ");            
             }
 
             Parser parser = new Parser();
-            List<ASTStatement> statements = parser.Parse(tokens);
+            ASTScope mainScope = parser.Parse(tokens);
+
+            Verificator verificator = new Verificator();
+            verificator.Verify(mainScope);
         }
         else
         {

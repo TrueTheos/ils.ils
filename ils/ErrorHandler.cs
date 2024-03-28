@@ -5,22 +5,22 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace ils
-{
-    public class CustomException : Exception
+{    public class ErrorHandler
     {
-        public CustomException(string message) : base(message) { }
-    }
+        private static void Log(string message)
+        {
+            Console.WriteLine($"\n{message}");
+            Environment.Exit(-1);
+        }
 
-    public class ErrorHandler
-    {
         public static void Custom(string message)
         {
-            throw new CustomException(message);
+            Log(message);
         }
 
         public static void Expected(string message, int line) 
         {
-            throw new CustomException($"[{line}] Expected '{message}'!");
+            Log($"[{line}] Expected '{message}'!");
         }
     }
 }

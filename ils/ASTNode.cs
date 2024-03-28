@@ -12,13 +12,13 @@ namespace ils
 
     public class ASTVariableDeclaration : ASTStatement
     {
-        public string name;
+        public Token name;
         public TokenType type;
         public ASTExpression value;
 
         public ASTVariableDeclaration(Token name, Token type, ASTExpression value)
         {
-            this.name = name.value;
+            this.name = name;
             this.type = type.tokenType;
             this.value = value;
         }
@@ -30,7 +30,41 @@ namespace ils
     }
 
     public abstract class ASTExpression : ASTNode { }
+
+    public class ASTScope : ASTStatement
+    {
+        public List<ASTStatement> statements;
+        public ASTScope parentScope;
+
+        public ASTScope(List<ASTStatement> statements, ASTScope parentScope)
+        {
+            this.statements = statements;
+            this.parentScope = parentScope;
+        }
+
+        public List<ASTScope> GetChildScopes()
+        {
+            return statements.OfType<ASTScope>().ToList();
+        }
+
+        public List<T> GetStatementsOfType<T>() where T : ASTStatement
+        {
+            return statements.OfType<T>().ToList();
+        }
+    }
     
+    public class ASTAssign : ASTStatement
+    {
+        public Token identifier;
+        public ASTExpression value;
+
+        public ASTAssign(Token identifier, ASTExpression value) 
+        {
+            this.identifier = identifier;
+            this.value = value;
+        }
+    }
+
     public class ASTIdentifier : ASTExpression
     {
         public string name;
@@ -48,6 +82,36 @@ namespace ils
         public ASTIntLiteral(string value)
         {
             this.value = Int32.Parse(value);
+        }
+    }
+
+    public class ASTStringLiteral : ASTExpression
+    {
+        public string value;
+
+        public ASTStringLiteral(string value)
+        {
+            this.value = value;
+        }
+    }
+
+    public class ASTCharLiteral : ASTExpression
+    {
+        public char value;
+
+        public ASTCharLiteral(string value)
+        {
+            this.value = value[0];
+        }
+    }
+
+    public class ASTBoolLiteral : ASTExpression
+    {
+        public bool value;
+
+        public ASTBoolLiteral(string value)
+        {
+            this.value = value == "true" ? true : false;
         }
     }
 

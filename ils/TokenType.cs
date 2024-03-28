@@ -21,6 +21,11 @@ namespace ils
         STAR, // *
         SLASH, // /
 
+        OPEN_PARENTHESIS, // (
+        CLOSE_PARENTHESIS, // )
+        OPEN_CURLY, // {
+        CLOSE_CURLY, // }
+
         LITERAL_STR,
         LITERAL_INT,
         LITERAL_CHAR,

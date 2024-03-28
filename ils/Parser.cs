@@ -13,9 +13,15 @@ namespace ils
 
         List<ASTStatement> _statements = new();
 
-        public List<ASTStatement> Parse(List<Token> tokens) 
+        ASTScope _mainScope;
+
+        ASTScope _currentScope;
+
+        public ASTScope Parse(List<Token> tokens) 
         {
             _tokens = tokens;
+            _mainScope = new(null, null);
+            _currentScope = _mainScope;
 
             while(CanPeek())
             {
@@ -30,23 +36,70 @@ namespace ils
                 }
             }
 
-            return _statements;
+            _mainScope.statements = _statements;
+            return _mainScope;
+        }
+
+        private ASTExpression ParseExpressionNode()
+        {
+            if (TryConsume(TokenType.LITERAL_INT) is Token intLiteral && intLiteral != null)
+            {
+                return new ASTIntLiteral(intLiteral.value);
+            }
+            if (TryConsume(TokenType.IDENTIFIER) is Token identifier && identifier != null)
+            {
+                return new ASTIdentifier(identifier);
+            }
+            if (TryConsume(TokenType.QUOTATION) != null)
+            {
+                if (TryConsume(TokenType.LITERAL_STR) is Token strLiteral && strLiteral != null)
+                {
+                    if(TryConsume(TokenType.QUOTATION) != null)
+                    {
+                        return new ASTStringLiteral(strLiteral.value);
+                    }
+                }
+                
+            }
+            if (TryConsume(TokenType.SINGLE_QUATATION) != null)
+            {
+                if (TryConsume(TokenType.LITERAL_CHAR) is Token charLiteral && charLiteral != null)
+                {
+                    if (TryConsume(TokenType.SINGLE_QUATATION) != null)
+                    {
+                        return new ASTCharLiteral(charLiteral.value);
+                    }
+                }
+
+            }
+            if (TryConsume(TokenType.TRUE) != null)
+            {
+                return new ASTBoolLiteral("true");
+            }
+            if (TryConsume(TokenType.FALSE) != null)
+            {
+                return new ASTBoolLiteral("false");
+            }
+            if(TryConsume(TokenType.OPEN_PARENTHESIS) != null)
+            {
+                ASTExpression expr = ParseExpression();
+                if(expr == null) 
+                {
+                    ErrorHandler.Expected("expression", Peek().line);
+                    return null;
+                }
+                TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
+                return expr;
+            }
+
+            return null;
         }
 
         private ASTExpression ParseExpression(int minPrec = 0)
         {
-            ASTExpression leftNode = null;
+            ASTExpression leftNode = ParseExpressionNode();
 
-            if(TryConsume(TokenType.LITERAL_INT) is Token intLiteral && intLiteral != null)
-            {
-                leftNode = new ASTIntLiteral(intLiteral.value);
-            }
-            else if(TryConsume(TokenType.IDENTIFIER) is Token identifier && identifier != null)
-            {
-                leftNode = new ASTIdentifier(identifier);
-            }
-
-            if(leftNode == null) 
+            if (leftNode == null) 
             {
                 ErrorHandler.Expected("expression", Peek().line);
                 return null;
@@ -88,6 +141,29 @@ namespace ils
             }
 
             return leftNode;
+        }
+
+        private ASTScope ParseScope(ASTScope parentScope)
+        {
+            if(TryConsume(TokenType.OPEN_CURLY) == null)
+            {
+                return null;
+            }
+
+            List<ASTStatement> statements = new();
+
+            ASTScope scope = new ASTScope(null, parentScope);
+            _currentScope = scope;
+            while(ParseStatement() is ASTStatement stmt && stmt != null)
+            {
+                statements.Add(stmt);
+            }
+
+            TryConsumeErr(TokenType.CLOSE_CURLY);
+
+            scope.statements.AddRange(statements);
+            _currentScope = parentScope;
+            return scope;
         }
 
         private ASTStatement ParseStatement()
@@ -152,8 +228,38 @@ namespace ils
 
                     return new ASTVariableDeclaration(identifier, variableType, value);
                 }
+            
+                if(Expect(TokenType.ASSIGN, 1))
+                {
+                    Token identifier = Consume();
+                    Consume();
+
+                    ASTExpression expr = ParseExpression();
+
+                    if(expr == null)
+                    {
+                        ErrorHandler.Expected("expression", Peek().line);
+                        return null;
+                    }
+
+                    TryConsumeErr(TokenType.SEMICOLON);
+
+                    return new ASTAssign(identifier, expr);
+                }
             }
 
+            if(Expect(TokenType.OPEN_CURLY))
+            {
+                ASTScope scope = ParseScope(_currentScope);
+
+                if(scope == null)
+                {
+                    ErrorHandler.Expected("scope", Peek().line);
+                    return null;
+                }
+
+                return scope;
+            }
             return null;
         }
 
