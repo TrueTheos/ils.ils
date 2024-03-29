@@ -29,8 +29,11 @@ class ILS
             Parser parser = new Parser();
             ASTScope mainScope = parser.Parse(tokens);
 
-            Verificator verificator = new Verificator();
-            verificator.Verify(mainScope);
+            /*Verificator verificator = new Verificator();
+            verificator.Verify(mainScope);*/
+
+            IRGenerator irGenerator = new IRGenerator();
+            irGenerator.Generate(mainScope);
         }
         else
         {

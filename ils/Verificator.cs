@@ -10,17 +10,18 @@ namespace ils
     {
         public void Verify(ASTScope mainScope)
         {
-            VariableDuplicates(mainScope);
+            //ScopeVariableDuplicates(mainScope);
         }
 
+        /*
         /// <summary>
         /// Checks if there are no variable duplicates
         /// </summary>
-        public bool VariableDuplicates(ASTScope scope)
+        public bool ScopeVariableDuplicates(ASTScope scope)
         {
             List<ASTVariableDeclaration> variables = scope.GetStatementsOfType<ASTVariableDeclaration>();
             foreach(ASTScope childScope in scope.GetChildScopes())
-            {
+            {              
                 variables.AddRange(childScope.GetStatementsOfType<ASTVariableDeclaration>());
             }
 
@@ -42,5 +43,6 @@ namespace ils
 
             return true;
         }
+        */
     }
 }

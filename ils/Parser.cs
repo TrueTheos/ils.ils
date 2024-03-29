@@ -161,7 +161,7 @@ namespace ils
 
             TryConsumeErr(TokenType.CLOSE_CURLY);
 
-            scope.statements.AddRange(statements);
+            scope.statements = statements;
             _currentScope = parentScope;
             return scope;
         }
