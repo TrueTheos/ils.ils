@@ -119,13 +119,27 @@ namespace ils
     {
         public ASTExpression leftNode;
         public ASTExpression rightNode;
-        public Token operation;
+        public ArithmeticOpType operation;
 
         public ASTArithmeticOperation(ASTExpression leftNode, ASTExpression rightNode, Token operation)
         {
             this.leftNode = leftNode;
             this.rightNode = rightNode;
-            this.operation = operation;
+            switch (operation.value)
+            {
+                case "+":
+                    this.operation = ArithmeticOpType.ADD;
+                    break;
+                case "-":
+                    this.operation = ArithmeticOpType.SUB;
+                    break;
+                case "/":
+                    this.operation = ArithmeticOpType.DIV;
+                    break;
+                case "*":
+                    this.operation = ArithmeticOpType.MUL;
+                    break;
+            }
         }
     }
 }

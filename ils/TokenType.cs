@@ -38,4 +38,9 @@ namespace ils
         TRUE,
         FALSE,
     }
+
+    public enum ArithmeticOpType
+    {
+        ADD, MUL, SUB, DIV
+    }
 }

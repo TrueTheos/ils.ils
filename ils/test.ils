@@ -1,5 +1,1 @@
-a: int;
-
-{
-	test: str;
-}
+a: int = 1 + 1;

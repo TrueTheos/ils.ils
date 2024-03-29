@@ -11,7 +11,9 @@ namespace ils
     public class IRGenerator
     {
         protected static Dictionary<string, IRLabel> _labels = new();
-        public Dictionary<string, NamedVariable> _variables = new();
+        protected static Dictionary<string, NamedVariable> _variables = new();
+
+        protected static Dictionary<string, TempVariable> _tempVariables = new();
 
         public List<IRNode> _IR = new();
 
@@ -24,6 +26,15 @@ namespace ils
             {
                 Console.WriteLine(irNode.ToString());
             }
+        }
+
+        private string CreateNewTempVar()
+        {
+            string varName = $"TEMP_{_tempVariables.Keys.Count}";
+            TempVariable tempVar = new TempVariable(varName);
+            _tempVariables.Add(varName, tempVar);
+            _IR.Add(tempVar);
+            return varName;
         }
 
         private void ParseScope(ASTScope _scope, int scopeIndex, Dictionary<string, Variable> scopeVariables = null)
@@ -56,7 +67,7 @@ namespace ils
 
                         if(varDeclaration.value != null)
                         {
-                            // ir assign
+                            ParseExpression(varDeclaration.value, newVar);
                         }
                     }
                 }
@@ -68,11 +79,11 @@ namespace ils
                 {
                     if (assign.value is ASTIdentifier identifier)
                     {
-                        _IR.Add(new IRAssign(assign.identifier, identifier.name));
+                        _IR.Add(new IRAssign(assign.identifier.value, identifier.name));
                     }
                     else if (assign.value is ASTIntLiteral intLiteral)
                     {
-                        _IR.Add(new IRAssign(assign.identifier, intLiteral.value.ToString()));
+                        _IR.Add(new IRAssign(assign.identifier.value, intLiteral.value.ToString()));
                     }
                     else if (assign.value is ASTStringLiteral strLiteral)
                     {
@@ -80,15 +91,15 @@ namespace ils
                     }
                     else if (assign.value is ASTCharLiteral charLiteral)
                     {
-                        _IR.Add(new IRAssign(assign.identifier, (charLiteral.value - '0').ToString()));
+                        _IR.Add(new IRAssign(assign.identifier.value, (charLiteral.value - '0').ToString()));
                     }
                     else if (assign.value is ASTBoolLiteral boolLiteral)
                     {
-                        _IR.Add(new IRAssign(assign.identifier, boolLiteral.value ? "1" : "0"));
+                        _IR.Add(new IRAssign(assign.identifier.value, boolLiteral.value ? "1" : "0"));
                     }
                     else
                     {
-                        ParseExpression(assign.value);
+                        ParseExpression(assign.value, (NamedVariable)localVariables[assign.identifier.value]);
                     }
                 }
             }
@@ -98,22 +109,60 @@ namespace ils
 
         }
 
-        private List<IRNode> ParseExpression(ASTExpression _expression)
+        private Variable ParseExpression(ASTExpression _expression, Variable saveLocation)
         {
             List<IRNode> result = new();
-            
-            if (_expression is ASTArithmeticOperation arithmeticOp)
-            {
 
+            string tempVarName = CreateNewTempVar();
+            TempVariable tempVar = _tempVariables[tempVarName];
+
+            if (_expression is ASTIdentifier identifier)
+            {
+                _IR.Add(new IRAssign(tempVarName, identifier.name));
+            }
+            else if (_expression is ASTIntLiteral intLiteral)
+            {
+                _IR.Add(new IRAssign(tempVarName, intLiteral.value.ToString()));
+            }
+            else if (_expression is ASTStringLiteral strLiteral)
+            {
+                //not implemented yet
+            }
+            else if (_expression is ASTCharLiteral charLiteral)
+            {
+                _IR.Add(new IRAssign(tempVarName, (charLiteral.value - '0').ToString()));
+            }
+            else if (_expression is ASTBoolLiteral boolLiteral)
+            {
+                _IR.Add(new IRAssign(tempVarName, boolLiteral.value ? "1" : "0"));
+            }          
+            else if (_expression is ASTArithmeticOperation arithmeticOp)
+            {
+                switch(arithmeticOp.operation)
+                {
+                    case ArithmeticOpType.ADD:
+                        _IR.Add(new IRAddOp(tempVar, ParseExpression(arithmeticOp.leftNode, tempVar), ParseExpression(arithmeticOp.leftNode, tempVar)));
+                        break;
+                    case ArithmeticOpType.SUB:
+                        break;
+                    case ArithmeticOpType.MUL:
+                        break;
+                    case ArithmeticOpType.DIV:
+                        break;
+                }
             }
 
-            return result;
+            _IR.Add(new IRAssign(saveLocation.variableName, tempVarName));
+
+            return tempVar;
         }
 
-        public abstract class Variable : IRNode{ }
+        public abstract class Variable : IRNode
+        {
+            public string variableName = "";
+        }
         public class NamedVariable : Variable
         {
-            public string variableName;
             public enum VariableType { STRING, INT, CHAR, BOOL }
             public VariableType variableType;
 
@@ -121,7 +170,7 @@ namespace ils
             {
                 Name = "VAR";
 
-                variableName = declaration.name.value;
+                this.variableName = declaration.name.value;
 
                 switch (declaration.type)
                 {
@@ -135,6 +184,20 @@ namespace ils
             public override string ToString()
             {
                 return $"({Name}, {variableName}, {variableType})";
+            }
+        }
+
+        public class TempVariable : Variable
+        {
+            public TempVariable(string variableName)
+            {
+                Name = "TEMP";
+                this.variableName = variableName;
+            }
+
+            public override string ToString()
+            {
+                return $"({Name}, {variableName})";
             }
         }
 
@@ -164,22 +227,20 @@ namespace ils
 
         public class IRAssign : IRNode
         {
-            Token identifier;
+            string identifier;
             string value;
 
-            public IRAssign(Token identifier, string value)
+            public IRAssign(string identifier, string value)
             {
-                Name = "ASS";
+                Name = "ASS";  
 
                 this.identifier = identifier;
-                this.value = value;
-
-                
+                this.value = value;                
             }
 
             public override string ToString()
             {
-                return $"({Name}, {identifier.value}, {value})";
+                return $"({Name}, {identifier}, {value})";
             }
         }
 
@@ -214,15 +275,7 @@ namespace ils
             public Variable b;
             public override string ToString()
             {
-                string result = $"({Name}, ";
-                if (a is NamedVariable namedA) result += $"{namedA.variableName}, ";
-                else if (a is LiteralVariable literalA) result += $"{literalA.value}, ";
-
-                if (b is NamedVariable namedB) result += $"{namedB.variableName}, ";
-                else if (b is LiteralVariable literalB) result += $"{literalB.value}, ";
-
-                if (resultLocation is NamedVariable namedR) result += $"{namedR})";
-                return result;
+                return  $"({Name}, {a.variableName}, {b.variableName}, {resultLocation.variableName})";
             }
         }
 

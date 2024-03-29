@@ -12,6 +12,8 @@ class ILS
             // Read all lines from the file
             string source = File.ReadAllText(SOURCE_FILE);
 
+            if (source.Last() != '\n') source += '\n';
+
             Tokenizer tokenizer = new Tokenizer();
             List<Token> tokens = tokenizer.Tokenize(source);
 
