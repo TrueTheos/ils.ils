@@ -251,7 +251,7 @@ namespace ils
 
         private bool Previous(TokenType type)
         {
-            return _tokens.Count > 1 && _tokens[_tokens.Count - 2].tokenType == type;
+            return _tokens.Count > 1 && _tokens[_tokens.Count - 1].tokenType == type;
         }
 
         private bool Expect(string next)

@@ -126,7 +126,7 @@ namespace ils
             }
             else if (_expression is ASTStringLiteral strLiteral)
             {
-                //not implemented yet
+                Console.WriteLine("not implemented");
             }
             else if (_expression is ASTCharLiteral charLiteral)
             {
