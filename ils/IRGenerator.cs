@@ -111,37 +111,52 @@ namespace ils
 
         private Variable ParseExpression(ASTExpression _expression, Variable saveLocation)
         {
-            List<IRNode> result = new();
-
-            string tempVarName = CreateNewTempVar();
-            TempVariable tempVar = _tempVariables[tempVarName];
-
             if (_expression is ASTIdentifier identifier)
             {
+                string tempVarName = CreateNewTempVar();
+                TempVariable tempVar = _tempVariables[tempVarName];
                 _IR.Add(new IRAssign(tempVarName, identifier.name));
+                return tempVar;
             }
             else if (_expression is ASTIntLiteral intLiteral)
             {
-                _IR.Add(new IRAssign(tempVarName, intLiteral.value.ToString()));
+                _IR.Add(new IRAssign(saveLocation.variableName, intLiteral.value.ToString()));
+                return new LiteralVariable(intLiteral.value.ToString());
             }
             else if (_expression is ASTStringLiteral strLiteral)
             {
-                Console.WriteLine("not implemented");
+                Console.WriteLine("str not implemented");
             }
             else if (_expression is ASTCharLiteral charLiteral)
             {
+                string tempVarName = CreateNewTempVar();
+                TempVariable tempVar = _tempVariables[tempVarName];
                 _IR.Add(new IRAssign(tempVarName, (charLiteral.value - '0').ToString()));
+                return tempVar;
             }
             else if (_expression is ASTBoolLiteral boolLiteral)
             {
+                string tempVarName = CreateNewTempVar();
+                TempVariable tempVar = _tempVariables[tempVarName];
                 _IR.Add(new IRAssign(tempVarName, boolLiteral.value ? "1" : "0"));
+                return tempVar;
             }          
             else if (_expression is ASTArithmeticOperation arithmeticOp)
             {
-                switch(arithmeticOp.operation)
+                string tempVarName = CreateNewTempVar();
+                TempVariable tempVar = _tempVariables[tempVarName];
+
+                Variable leftVar = ParseExpression(arithmeticOp.leftNode, tempVar);
+
+                tempVarName = CreateNewTempVar();
+                tempVar = _tempVariables[tempVarName];
+
+                Variable righVar = ParseExpression(arithmeticOp.rightNode, tempVar);
+
+                switch (arithmeticOp.operation)
                 {
                     case ArithmeticOpType.ADD:
-                        _IR.Add(new IRAddOp(tempVar, ParseExpression(arithmeticOp.leftNode, tempVar), ParseExpression(arithmeticOp.leftNode, tempVar)));
+                        _IR.Add(new IRAddOp(tempVar, leftVar, righVar));
                         break;
                     case ArithmeticOpType.SUB:
                         break;
@@ -150,11 +165,12 @@ namespace ils
                     case ArithmeticOpType.DIV:
                         break;
                 }
+
+                _IR.Add(new IRAssign(saveLocation.variableName, tempVarName));
+                return tempVar;
             }
 
-            _IR.Add(new IRAssign(saveLocation.variableName, tempVarName));
-
-            return tempVar;
+            return null;
         }
 
         public abstract class Variable : IRNode
@@ -209,6 +225,7 @@ namespace ils
             {
                 Name = "LIT";
 
+                this.variableName = value.ToString();
                 this.value = value;
             }
 
