@@ -115,7 +115,7 @@ namespace ils
             {
                 string tempVarName = CreateNewTempVar();
                 TempVariable tempVar = _tempVariables[tempVarName];
-                _IR.Add(new IRAssign(tempVarName, identifier.name));
+                _IR.Add(new IRAssign(saveLocation.variableName, identifier.name));
                 return tempVar;
             }
             else if (_expression is ASTIntLiteral intLiteral)
