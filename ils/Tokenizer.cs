@@ -74,6 +74,21 @@ namespace ils
                         _tokens.Add(new(TokenType.FALSE, lineCount, buffer));
                         buffer = "";
                     }
+                    else if (buffer == "if")
+                    {
+                        _tokens.Add(new(TokenType.IF, lineCount, buffer));
+                        buffer = "";
+                    }
+                    else if (buffer == "elif")
+                    {
+                        _tokens.Add(new(TokenType.ELIF, lineCount, buffer));
+                        buffer = "";
+                    }
+                    else if (buffer == "else")
+                    {
+                        _tokens.Add(new(TokenType.ELSE, lineCount, buffer));
+                        buffer = "";
+                    }
                     else if(Previous(TokenType.QUOTATION)) 
                     {
                         while(CanPeek() && char.IsLetterOrDigit(Peek()))
@@ -146,6 +161,45 @@ namespace ils
                     {
                         Consume();
                     }
+                }
+                else if(Expect("=="))
+                {
+                    Consume();
+                    Consume();
+                    _tokens.Add(new(TokenType.EQUALS, lineCount, buffer));
+                }
+                else if (Expect("!="))
+                {
+                    Consume();
+                    Consume();
+                    _tokens.Add(new(TokenType.NOT_EQUAL, lineCount, buffer));
+                }
+                else if (Expect("!"))
+                {
+                    Consume();
+                    _tokens.Add(new(TokenType.NOT, lineCount, buffer));
+                }
+                else if (Expect(">"))
+                {
+                    Consume();
+                    _tokens.Add(new(TokenType.GREATER, lineCount, buffer));
+                }
+                else if (Expect(">="))
+                {
+                    Consume();
+                    Consume();
+                    _tokens.Add(new(TokenType.GREATER_EQUAL, lineCount, buffer));
+                }
+                else if (Expect("<"))
+                {
+                    Consume();
+                    _tokens.Add(new(TokenType.LESS, lineCount, buffer));
+                }
+                else if (Expect("<="))
+                {
+                    Consume();
+                    Consume();
+                    _tokens.Add(new(TokenType.LESS_EQUAL, lineCount, buffer));
                 }
                 else if (Expect("="))
                 {

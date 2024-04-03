@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -166,6 +167,85 @@ namespace ils
             return scope;
         }
 
+        private ASTCondition ParseCondition()
+        {
+            TryConsumeErr(TokenType.OPEN_PARENTHESIS);
+
+            ASTExpression leftNode = ParseExpression();
+
+            if (leftNode == null)
+            {
+                ErrorHandler.Expected("condition", Peek().line);
+                return null;
+            }
+
+            Token conditionType = Peek();
+            TokenType type = conditionType.tokenType;
+            if(type == TokenType.EQUALS || type == TokenType.NOT_EQUAL || type == TokenType.GREATER 
+                || type == TokenType.GREATER_EQUAL || type == TokenType.LESS || type == TokenType.LESS_EQUAL)
+            {
+                Consume();
+
+                ASTExpression rightNode = ParseExpression();
+
+                if (rightNode == null)
+                {
+                    ErrorHandler.Expected("condition", Peek().line);
+                    return null;
+                }
+
+                TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
+
+                return new ASTCondition(leftNode, conditionType, rightNode);
+            }
+            else
+            {
+                TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
+
+                return new ASTCondition(leftNode, null, null);
+            }
+        }
+
+        private ASTIfPred ParseIfPred()
+        {
+            if(TryConsume(TokenType.ELIF) != null)
+            {
+                ASTCondition cond = ParseCondition();
+
+                if (cond == null)
+                {
+                    ErrorHandler.Expected("condition", Peek().line);
+                    return null;
+                }
+
+                ASTScope scope = ParseScope(_currentScope);
+
+                if (scope == null)
+                {
+                    ErrorHandler.Expected("scope", Peek().line);
+                    return null;
+                }
+
+                ASTIfPred pred = ParseIfPred();
+
+                return new ASTElifPred(cond, scope, pred);
+            }
+            if(TryConsume(TokenType.ELSE) != null)
+            {
+                ASTScope scope = ParseScope(_currentScope);
+
+                if (scope == null)
+                {
+                    ErrorHandler.Expected("scope", Peek().line);
+                    return null;
+                }
+
+                return new ASTElsePred(scope);
+            }
+
+            return null;
+        }
+
         private ASTStatement ParseStatement()
         {
             if(Expect(TokenType.IDENTIFIER))
@@ -260,22 +340,39 @@ namespace ils
 
                 return scope;
             }
+
+            if(TryConsume(TokenType.IF) != null)
+            {
+                ASTCondition cond = ParseCondition();
+
+                if (cond == null)
+                {
+                    ErrorHandler.Expected("condition", Peek().line);
+                    return null;
+                }
+
+                ASTScope scope = ParseScope(_currentScope);
+
+                if (scope == null)
+                {
+                    ErrorHandler.Expected("scope", Peek().line);
+                    return null;
+                }
+
+                ASTIfPred pred = ParseIfPred();
+                return new ASTIf(cond, scope, pred);
+            }
             return null;
         }
 
         private int GetArithmeticOperationPrec(TokenType type)
         {
-            switch(type)
+            return type switch
             {
-                case TokenType.MINUS:
-                case TokenType.PLUS:
-                    return 0;
-                case TokenType.SLASH:
-                case TokenType.STAR:
-                    return 1;
-            }
-
-            return -1;
+                TokenType.MINUS or TokenType.PLUS => 0,
+                TokenType.SLASH or TokenType.STAR => 1,
+                _ => -1,
+            };
         }
 
         private Token Peek(int offset = 0)

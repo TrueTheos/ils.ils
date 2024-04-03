@@ -95,18 +95,94 @@ namespace ils
                     }
                     else if (assign.value is ASTBoolLiteral boolLiteral)
                     {
-                        _IR.Add(new IRAssign(assign.identifier.value, boolLiteral.value ? "1" : "0"));
+                        _IR.Add(new IRAssign(assign.identifier.value, boolLiteral.value.ToString()));
                     }
                     else
                     {
                         ParseExpression(assign.value, (NamedVariable)localVariables[assign.identifier.value]);
                     }
                 }
+                else if(statement is ASTIf ifstmt)
+                {
+                    ParseIf(ifstmt);
+                }
             }
 
             IRLabel scopeEnd = new($"SCOPE_{scopeIndex}_END");
             _IR.Add(scopeEnd);
 
+        }
+
+        int ifCount = 0;
+
+        private void ParseIf(ASTIf ifstmt)
+        {
+            ifCount++;
+            int labelnum = ifCount;
+            IRLabel ifStart = new($"IF_{labelnum}_START");
+            _IR.Add(ifStart);
+
+            string conditionResultName = CreateNewTempVar();
+
+            ParseCondition(ifstmt.cond, _tempVariables[conditionResultName]);
+
+            ParseScope(ifstmt.scope, labelnum);
+
+            if(ifstmt.pred != null)
+            {
+                ParseIfPred(ifstmt.pred);
+            }
+
+            IRLabel ifEnd = new($"IF_{labelnum}_END");
+            _IR.Add(ifEnd);
+        }
+
+        private void ParseCondition(ASTCondition cond, Variable result)
+        {
+            string leftNodeName = CreateNewTempVar();
+            ParseExpression(cond.leftNode, _tempVariables[leftNodeName]);
+
+            if (cond.rightNode != null)
+            {
+                string rightNodeName = CreateNewTempVar();
+                ParseExpression(cond.rightNode, _tempVariables[rightNodeName]);
+            }
+        }
+
+        private void ParseIfPred(ASTIfPred pred)
+        {
+            ifCount++;
+            int labelnum = ifCount;
+
+            if(pred is ASTElifPred elif)
+            {
+                IRLabel ifStart = new($"ELIF_{labelnum}_START");
+                _IR.Add(ifStart);
+
+                string conditionResultName = CreateNewTempVar();
+
+                ParseCondition(elif.cond, _tempVariables[conditionResultName]);
+
+                ParseScope(elif.scope, labelnum);
+
+                if (elif.pred != null)
+                {
+                    ParseIfPred(elif.pred);
+                }
+
+                IRLabel ifEnd = new($"ELIF_{labelnum}_END");
+                _IR.Add(ifEnd);
+            }
+            else if(pred is ASTElsePred elsepred)
+            {
+                IRLabel ifStart = new($"ELSE_{labelnum}_START");
+                _IR.Add(ifStart);
+
+                ParseScope(elsepred.scope, labelnum);
+
+                IRLabel ifEnd = new($"ELSE_{labelnum}_END");
+                _IR.Add(ifEnd);
+            }  
         }
 
         private Variable ParseExpression(ASTExpression _expression, Variable saveLocation)
@@ -116,7 +192,6 @@ namespace ils
                 string tempVarName = CreateNewTempVar();
                 TempVariable tempVar = _tempVariables[tempVarName];
                 _IR.Add(new IRAssign(saveLocation.variableName, identifier.name));
-                return tempVar;
             }
             else if (_expression is ASTIntLiteral intLiteral)
             {
@@ -138,7 +213,7 @@ namespace ils
             {
                 string tempVarName = CreateNewTempVar();
                 TempVariable tempVar = _tempVariables[tempVarName];
-                _IR.Add(new IRAssign(tempVarName, boolLiteral.value ? "1" : "0"));
+                _IR.Add(new IRAssign(tempVarName, boolLiteral.value.ToString()));
                 return tempVar;
             }          
             else if (_expression is ASTArithmeticOperation arithmeticOp)

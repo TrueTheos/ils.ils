@@ -14,7 +14,7 @@ class ILS
 
             if (source.Last() != '\n') source += '\n';
 
-            Tokenizer tokenizer = new Tokenizer();
+            Tokenizer tokenizer = new();
             List<Token> tokens = tokenizer.Tokenize(source);
 
             int line = 1;
@@ -28,13 +28,13 @@ class ILS
                 Console.Write(token.tokenType.ToString() + " ");            
             }
 
-            Parser parser = new Parser();
+            Parser parser = new();
             ASTScope mainScope = parser.Parse(tokens);
 
             /*Verificator verificator = new Verificator();
             verificator.Verify(mainScope);*/
 
-            IRGenerator irGenerator = new IRGenerator();
+            IRGenerator irGenerator = new();
             irGenerator.Generate(mainScope);
         }
         else

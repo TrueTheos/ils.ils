@@ -35,6 +35,18 @@ namespace ils
         TYPE_BOOLEAN,
         TYPE_CHAR,
 
+        EQUALS, // ==
+        GREATER, // >
+        GREATER_EQUAL, // >=
+        LESS, // <
+        LESS_EQUAL, // <=
+        NOT_EQUAL, // !=
+        NOT, // !
+
+        IF,
+        ELIF,
+        ELSE,
+
         TRUE,
         FALSE,
     }
