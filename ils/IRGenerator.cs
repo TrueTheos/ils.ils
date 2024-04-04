@@ -4,6 +4,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using static ils.ASTCondition;
+using static ils.IRGenerator;
 using static ils.IRGenerator.NamedVariable;
 
 namespace ils
@@ -113,28 +115,33 @@ namespace ils
 
         }
 
-        int ifCount = 0;
-
         private void ParseIf(ASTIf ifstmt)
         {
-            ifCount++;
-            int labelnum = ifCount;
-            IRLabel ifStart = new($"IF_{labelnum}_START");
-            _IR.Add(ifStart);
+            int labelnum = _labels.Count;
 
             string conditionResultName = CreateNewTempVar();
 
+            IRLabel label = new($"LABEL_{labelnum}");
+
             ParseCondition(ifstmt.cond, _tempVariables[conditionResultName]);
+
+            _IR.Add(new IRTest(conditionResultName));
+            _IR.Add(new IRJumpZero(label.labelName));
 
             ParseScope(ifstmt.scope, labelnum);
 
             if(ifstmt.pred != null)
             {
-                ParseIfPred(ifstmt.pred);
+                IRLabel endLabel = new($"LABEL_{labelnum}_END");
+                _IR.Add(new IRJump(endLabel.labelName));
+                _IR.Add(label);
+                ParseIfPred(ifstmt.pred, endLabel);
+                _IR.Add(endLabel);
             }
-
-            IRLabel ifEnd = new($"IF_{labelnum}_END");
-            _IR.Add(ifEnd);
+            else
+            {
+                _IR.Add(label);
+            }
         }
 
         private void ParseCondition(ASTCondition cond, Variable result)
@@ -146,42 +153,42 @@ namespace ils
             {
                 string rightNodeName = CreateNewTempVar();
                 ParseExpression(cond.rightNode, _tempVariables[rightNodeName]);
+
+                _IR.Add(new IRCondition(result, _tempVariables[leftNodeName], cond.conditionType, _tempVariables[rightNodeName]));
+            }
+            else
+            {
+                _IR.Add(new IRCondition(result, _tempVariables[leftNodeName], ConditionType.EQUAL, new LiteralVariable("1")));
             }
         }
 
-        private void ParseIfPred(ASTIfPred pred)
+        private void ParseIfPred(ASTIfPred pred, IRLabel endLabel)
         {
-            ifCount++;
-            int labelnum = ifCount;
+            int labelNum = _labels.Count;
 
             if(pred is ASTElifPred elif)
             {
-                IRLabel ifStart = new($"ELIF_{labelnum}_START");
-                _IR.Add(ifStart);
-
                 string conditionResultName = CreateNewTempVar();
 
                 ParseCondition(elif.cond, _tempVariables[conditionResultName]);
 
-                ParseScope(elif.scope, labelnum);
+                IRLabel label = new($"ELSE_{labelNum}_START");
+                _IR.Add(new IRTest(conditionResultName));
+                _IR.Add(new IRJumpZero(label.labelName));
+
+                ParseScope(elif.scope, labelNum);
+
+                _IR.Add(new IRJump(endLabel.labelName));
 
                 if (elif.pred != null)
                 {
-                    ParseIfPred(elif.pred);
+                    _IR.Add(label);
+                    ParseIfPred(elif.pred, endLabel);
                 }
-
-                IRLabel ifEnd = new($"ELIF_{labelnum}_END");
-                _IR.Add(ifEnd);
             }
             else if(pred is ASTElsePred elsepred)
             {
-                IRLabel ifStart = new($"ELSE_{labelnum}_START");
-                _IR.Add(ifStart);
-
-                ParseScope(elsepred.scope, labelnum);
-
-                IRLabel ifEnd = new($"ELSE_{labelnum}_END");
-                _IR.Add(ifEnd);
+                ParseScope(elsepred.scope, labelNum);
             }  
         }
 
@@ -248,6 +255,80 @@ namespace ils
             return null;
         }
 
+        public class IRCondition : IRNode
+        {
+            public Variable resultVariable;
+
+            public Variable leftNode;
+            public ConditionType conditionType;
+            public Variable rightNode;
+
+            public IRCondition(Variable resultVariable, Variable leftNode, ConditionType conditionType, Variable rightNode)
+            {
+                Name = "COND";
+                this.resultVariable = resultVariable;
+                this.leftNode = leftNode;
+                this.conditionType = conditionType;
+                this.rightNode = rightNode;
+            }
+
+            public override string ToString()
+            {
+                return $"({Name}, {leftNode.variableName}, {conditionType}, {rightNode.variableName}, {resultVariable.variableName})";
+            }
+        }
+
+        public class IRTest : IRNode
+        {
+            public string variable;
+
+            public IRTest(string variable)
+            {
+                Name = "TEST";
+
+                this.variable = variable;
+            }
+
+            public override string ToString()
+            {
+                return $"({Name}, {variable})";
+            }
+        }
+
+        public class IRJumpZero : IRNode
+        {
+            public string label;
+
+            public IRJumpZero(string label)
+            {
+                Name = "JZ";
+
+                this.label = label;
+            }
+
+            public override string ToString()
+            {
+                return $"({Name}, {label})";
+            }
+        }
+
+        public class IRJump : IRNode
+        {
+            public string label;
+
+            public IRJump(string label)
+            {
+                Name = "JMP";
+
+                this.label = label;
+            }
+
+            public override string ToString()
+            {
+                return $"({Name}, {label})";
+            }
+        }
+
         public abstract class Variable : IRNode
         {
             public string variableName = "";
@@ -312,7 +393,7 @@ namespace ils
 
         public abstract class IRNode 
         {
-            public string Name;
+            protected string Name;
 
             public abstract string ToString();
         }
