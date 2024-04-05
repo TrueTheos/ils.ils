@@ -21,7 +21,7 @@ namespace ils
         public ASTScope Parse(List<Token> tokens) 
         {
             _tokens = tokens;
-            _mainScope = new(null, null);
+            _mainScope = new(null, null, ScopeType.DEFAULT);
             _currentScope = _mainScope;
 
             while(CanPeek())
@@ -144,7 +144,7 @@ namespace ils
             return leftNode;
         }
 
-        private ASTScope ParseScope(ASTScope parentScope)
+        private ASTScope ParseScope(ASTScope parentScope, ScopeType scopeType)
         {
             if(TryConsume(TokenType.OPEN_CURLY) == null)
             {
@@ -153,7 +153,7 @@ namespace ils
 
             List<ASTStatement> statements = new();
 
-            ASTScope scope = new ASTScope(null, parentScope);
+            ASTScope scope = new ASTScope(null, parentScope, scopeType);
             _currentScope = scope;
             while(ParseStatement() is ASTStatement stmt && stmt != null)
             {
@@ -218,7 +218,7 @@ namespace ils
                     return null;
                 }
 
-                ASTScope scope = ParseScope(_currentScope);
+                ASTScope scope = ParseScope(_currentScope, ScopeType.IF);
 
                 if (scope == null)
                 {
@@ -232,7 +232,7 @@ namespace ils
             }
             if(TryConsume(TokenType.ELSE) != null)
             {
-                ASTScope scope = ParseScope(_currentScope);
+                ASTScope scope = ParseScope(_currentScope, ScopeType.IF);
 
                 if (scope == null)
                 {
@@ -330,7 +330,7 @@ namespace ils
 
             if(Expect(TokenType.OPEN_CURLY))
             {
-                ASTScope scope = ParseScope(_currentScope);
+                ASTScope scope = ParseScope(_currentScope, ScopeType.DEFAULT);
 
                 if(scope == null)
                 {
@@ -351,7 +351,7 @@ namespace ils
                     return null;
                 }
 
-                ASTScope scope = ParseScope(_currentScope);
+                ASTScope scope = ParseScope(_currentScope, ScopeType.IF);
 
                 if (scope == null)
                 {
@@ -361,6 +361,40 @@ namespace ils
 
                 ASTIfPred pred = ParseIfPred();
                 return new ASTIf(cond, scope, pred);
+            }
+
+            if(TryConsume(TokenType.WHILE) != null)
+            {
+                ASTCondition cond = ParseCondition();
+
+                if (cond == null)
+                {
+                    ErrorHandler.Expected("condition", Peek().line);
+                    return null;
+                }
+
+                ASTScope scope = ParseScope(_currentScope, ScopeType.LOOP);
+
+                if (scope == null)
+                {
+                    ErrorHandler.Expected("scope", Peek().line);
+                    return null;
+                }
+
+                return new ASTWhile(cond, scope);
+            }
+
+            if(TryConsume(TokenType.BREAK) != null)
+            {
+                if(_currentScope == _mainScope)
+                {
+                    ErrorHandler.Custom($"[{Peek().line}] You can not break out of main scope!");
+                    return null;
+                }
+
+                TryConsumeErr(TokenType.SEMICOLON);
+
+                return new ASTBreak(_currentScope);
             }
             return null;
         }

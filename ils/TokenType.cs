@@ -43,6 +43,9 @@ namespace ils
         NOT_EQUAL, // !=
         NOT, // !
 
+        WHILE,
+        BREAK,
+
         IF,
         ELIF,
         ELSE,

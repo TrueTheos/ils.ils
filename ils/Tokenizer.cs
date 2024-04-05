@@ -89,6 +89,16 @@ namespace ils
                         _tokens.Add(new(TokenType.ELSE, lineCount, buffer));
                         buffer = "";
                     }
+                    else if (buffer == "while")
+                    {
+                        _tokens.Add(new(TokenType.WHILE, lineCount, buffer));
+                        buffer = "";
+                    }
+                    else if (buffer == "break")
+                    {
+                        _tokens.Add(new(TokenType.BREAK, lineCount, buffer));
+                        buffer = "";
+                    }
                     else if(Previous(TokenType.QUOTATION)) 
                     {
                         while(CanPeek() && char.IsLetterOrDigit(Peek()))

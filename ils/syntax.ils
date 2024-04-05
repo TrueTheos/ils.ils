@@ -1,0 +1,48 @@
+// Comment
+/*
+    Block comment
+*/
+
+number: int = 10;
+letter: char = 'c';
+word: str = "word";
+boolean: bool = true; // false
+
+fun power(x: int) -> int {
+    /* ... */
+}
+
+fun print(msg: str)
+{
+    /* ... */
+}
+
+if number > 0 { }
+elif number < 0 {}
+else {}
+
+while number > 10
+{
+    number = number - 1;
+}
+
+enum Status {
+    planned,
+    wip,
+    finished,
+    totest
+}
+
+currentStatus: Status = Status.planned;
+
+// Exhaustive
+switch currentStatus
+{
+    Status.planned:
+    {
+
+    }
+    Status.wip: { }
+    Status.totest, Status.finished:{}
+    _: {}
+}

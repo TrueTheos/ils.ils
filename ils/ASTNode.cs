@@ -19,10 +19,12 @@ namespace ils
 
     public abstract class ASTExpression : ASTNode { }
 
-    public class ASTScope(List<ASTStatement> statements, ASTScope parentScope) : ASTStatement
+    public enum ScopeType { DEFAULT, IF, LOOP }
+    public class ASTScope(List<ASTStatement> statements, ASTScope parentScope, ScopeType scopeType) : ASTStatement
     {
         public List<ASTStatement> statements = statements;
         public ASTScope parentScope = parentScope;
+        public ScopeType scopeType = scopeType;
 
         public List<ASTScope> GetChildScopes()
         {
@@ -32,7 +34,7 @@ namespace ils
         public List<T> GetStatementsOfType<T>() where T : ASTStatement
         {
             return statements.OfType<T>().ToList();
-        }
+        }     
     }
     
     public class ASTAssign(Token identifier, ASTExpression value) : ASTStatement
@@ -92,6 +94,17 @@ namespace ils
                     break;
             }
         }
+    }
+
+    public class ASTBreak(ASTScope scope) : ASTStatement
+    {
+        public ASTScope scope = scope;
+    }
+
+    public class ASTWhile(ASTCondition cond, ASTScope scope) : ASTStatement
+    {
+        public ASTCondition cond = cond;
+        public ASTScope scope = scope;
     }
 
     public class ASTIf(ASTCondition cond, ASTScope scope, ASTIfPred pred) : ASTStatement

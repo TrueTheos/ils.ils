@@ -19,15 +19,19 @@ namespace ils
 
         public List<IRNode> _IR = new();
 
-        public void Generate(ASTScope mainScope)
+        private Dictionary<ASTScope, ScopeLabels> _scopeLabels = new();
+
+        public List<IRNode> Generate(ASTScope mainScope)
         {
             ParseScope(mainScope, 0);
 
             Console.WriteLine("\n");
             foreach (IRNode irNode in _IR)
             {
-                Console.WriteLine(irNode.ToString());
+                Console.WriteLine(irNode.ToString);
             }
+
+            return _IR;
         }
 
         private string CreateNewTempVar()
@@ -43,9 +47,12 @@ namespace ils
         {
             IRLabel scopeStart = new($"SCOPE_{scopeIndex}_START");
             _IR.Add(scopeStart);
+            IRLabel scopeEnd = new($"SCOPE_{scopeIndex}_END");
             Dictionary<string, Variable> localVariables = new();
 
-            if(scopeVariables != null) 
+            _scopeLabels.Add(_scope, new ScopeLabels() { startLabel = scopeStart, endLabel = scopeEnd });
+
+            if (scopeVariables != null) 
             {
                 foreach (var variable in scopeVariables)
                 {
@@ -108,11 +115,51 @@ namespace ils
                 {
                     ParseIf(ifstmt);
                 }
+                else if(statement is ASTWhile whilestmt)
+                {
+                    ParseWhile(whilestmt);
+                }
+                else if(statement is ASTBreak breakstmt)
+                {
+                    if(_scope.scopeType == ScopeType.LOOP)
+                    {
+                        _IR.Add(new IRJump(scopeEnd.labelName));
+                    }
+                    else
+                    {
+                        ASTScope parentScope = GetParentScopeOfType(ScopeType.LOOP, _scope);
+
+                        if(parentScope != null)
+                        {
+                            _IR.Add(new IRJump(_scopeLabels[parentScope].endLabel.labelName));
+                        }
+                        else
+                        {
+                            _IR.Add(new IRJump(scopeEnd.labelName));
+                        }
+                    }
+                }
             }
 
-            IRLabel scopeEnd = new($"SCOPE_{scopeIndex}_END");
             _IR.Add(scopeEnd);
+        }
 
+        private struct ScopeLabels
+        {
+            public IRLabel startLabel, endLabel;
+        }
+
+        public ASTScope GetParentScopeOfType(ScopeType scopeType, ASTScope scope)
+        {
+            if (scope.parentScope != null)
+            {
+                if (scope.parentScope.scopeType == scopeType) return scope.parentScope;
+                else return GetParentScopeOfType(scopeType, scope.parentScope);
+            }
+            else
+            {
+                return null;
+            }
         }
 
         private void ParseIf(ASTIf ifstmt)
@@ -144,7 +191,30 @@ namespace ils
             }
         }
 
-        private void ParseCondition(ASTCondition cond, Variable result)
+        private void ParseWhile(ASTWhile whilestmt)
+        {
+            int labelnum = _labels.Count;
+
+            string conditionResultName = CreateNewTempVar();
+
+            IRLabel startLabel = new($"LABEL_{labelnum}_START");
+            IRLabel endLabel = new($"LABEL_{labelnum}_END");
+
+            ParseCondition(whilestmt.cond, _tempVariables[conditionResultName]);
+
+            _IR.Add(startLabel);
+            _IR.Add(new IRTest(conditionResultName));
+            _IR.Add(new IRJumpZero(endLabel.labelName));
+
+            //TODO: NEED TO ADD JUMP TO THE START OF WHILE AT THE END OF SCOPE
+
+            ParseScope(whilestmt.scope, labelnum);
+            _IR.Add(new IRJump(startLabel.labelName));
+
+            _IR.Add(endLabel);
+        }
+
+        private void ParseCondition(ASTCondition cond, Variable result) 
         {
             string leftNodeName = CreateNewTempVar();
             ParseExpression(cond.leftNode, _tempVariables[leftNodeName]);
@@ -198,7 +268,8 @@ namespace ils
             {
                 string tempVarName = CreateNewTempVar();
                 TempVariable tempVar = _tempVariables[tempVarName];
-                _IR.Add(new IRAssign(saveLocation.variableName, identifier.name));
+                _IR.Add(new IRAssign(tempVarName, identifier.name));
+                return tempVar;
             }
             else if (_expression is ASTIntLiteral intLiteral)
             {
@@ -211,17 +282,13 @@ namespace ils
             }
             else if (_expression is ASTCharLiteral charLiteral)
             {
-                string tempVarName = CreateNewTempVar();
-                TempVariable tempVar = _tempVariables[tempVarName];
-                _IR.Add(new IRAssign(tempVarName, (charLiteral.value - '0').ToString()));
-                return tempVar;
+                _IR.Add(new IRAssign(saveLocation.variableName, (charLiteral.value - '0').ToString()));
+                return new LiteralVariable(charLiteral.value.ToString());
             }
             else if (_expression is ASTBoolLiteral boolLiteral)
             {
-                string tempVarName = CreateNewTempVar();
-                TempVariable tempVar = _tempVariables[tempVarName];
-                _IR.Add(new IRAssign(tempVarName, boolLiteral.value.ToString()));
-                return tempVar;
+                _IR.Add(new IRAssign(saveLocation.variableName, boolLiteral.value.ToString()));
+                return new LiteralVariable(boolLiteral.value.ToString());
             }          
             else if (_expression is ASTArithmeticOperation arithmeticOp)
             {
@@ -272,10 +339,7 @@ namespace ils
                 this.rightNode = rightNode;
             }
 
-            public override string ToString()
-            {
-                return $"({Name}, {leftNode.variableName}, {conditionType}, {rightNode.variableName}, {resultVariable.variableName})";
-            }
+            public override string ToString => $"({Name}, {leftNode.variableName}, {conditionType}, {rightNode.variableName}, {resultVariable.variableName})";
         }
 
         public class IRTest : IRNode
@@ -289,10 +353,7 @@ namespace ils
                 this.variable = variable;
             }
 
-            public override string ToString()
-            {
-                return $"({Name}, {variable})";
-            }
+            public override string ToString => $"({Name}, {variable})";
         }
 
         public class IRJumpZero : IRNode
@@ -306,10 +367,7 @@ namespace ils
                 this.label = label;
             }
 
-            public override string ToString()
-            {
-                return $"({Name}, {label})";
-            }
+            public override string ToString => $"({Name}, {label})";
         }
 
         public class IRJump : IRNode
@@ -323,10 +381,7 @@ namespace ils
                 this.label = label;
             }
 
-            public override string ToString()
-            {
-                return $"({Name}, {label})";
-            }
+            public override string ToString => $"({Name}, {label})";
         }
 
         public abstract class Variable : IRNode
@@ -353,10 +408,7 @@ namespace ils
                 }
             }
 
-            public override string ToString()
-            {
-                return $"({Name}, {variableName}, {variableType})";
-            }
+            public override string ToString => $"({Name}, {variableName}, {variableType})";
         }
 
         public class TempVariable : Variable
@@ -367,10 +419,7 @@ namespace ils
                 this.variableName = variableName;
             }
 
-            public override string ToString()
-            {
-                return $"({Name}, {variableName})";
-            }
+            public override string ToString => $"({Name}, {variableName})";
         }
 
         public class LiteralVariable : Variable
@@ -385,17 +434,14 @@ namespace ils
                 this.value = value;
             }
 
-            public override string ToString()
-            {
-                return $"({Name}, {value})";
-            }
+            public override string ToString => $"({Name}, {value})";
         }
 
         public abstract class IRNode 
         {
             protected string Name;
 
-            public abstract string ToString();
+            public abstract string ToString { get; }
         }
 
         public class IRAssign : IRNode
@@ -405,16 +451,13 @@ namespace ils
 
             public IRAssign(string identifier, string value)
             {
-                Name = "ASS";  
+                Name = "ASN";  
 
                 this.identifier = identifier;
                 this.value = value;                
             }
 
-            public override string ToString()
-            {
-                return $"({Name}, {identifier}, {value})";
-            }
+            public override string ToString => $"({Name}, {identifier}, {value})";
         }
 
         public class IRLabel : IRNode 
@@ -435,10 +478,7 @@ namespace ils
                 _labels.Add(labelName, this);
             }
 
-            public override string ToString()
-            {
-                return $"({Name}, {labelName})";
-            }
+            public override string ToString => $"({Name}, {labelName})";
         }
 
         public abstract class IRArithmeticOp : IRNode 
@@ -446,10 +486,7 @@ namespace ils
             public Variable resultLocation;
             public Variable a;
             public Variable b;
-            public override string ToString()
-            {
-                return  $"({Name}, {a.variableName}, {b.variableName}, {resultLocation.variableName})";
-            }
+            public override string ToString => $"({Name}, {a.variableName}, {b.variableName}, {resultLocation.variableName})";
         }
 
         public class IRAddOp : IRArithmeticOp
