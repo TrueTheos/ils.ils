@@ -29,7 +29,7 @@ namespace ils
             Console.WriteLine("\n");
             foreach (IRNode irNode in _IR)
             {
-                Console.WriteLine(irNode.ToString);
+                Console.WriteLine(irNode.GetString());
             }
 
             return _IR;
@@ -78,7 +78,21 @@ namespace ils
 
                         if(varDeclaration.value != null)
                         {
-                            ParseExpression(varDeclaration.value, newVar);
+                            
+                            Variable var = ParseExpression(varDeclaration.value);
+
+                            if(var is TempVariable tempVar)
+                            {
+                                _IR.Add(new IRAssign(newVar.variableName, tempVar.variableName, tempVar.variableType));
+                            }
+                            if(var is NamedVariable namedVar)
+                            {
+                                _IR.Add(new IRAssign(newVar.variableName, namedVar.variableName, namedVar.variableType));
+                            }
+                            if (var is LiteralVariable literalVar)
+                            {
+                                _IR.Add(new IRAssign(newVar.variableName, literalVar.value, literalVar.variableType));
+                            }
                         }
                     }
                 }
@@ -264,7 +278,7 @@ namespace ils
             }  
         }
 
-        private Variable ParseExpression(ASTExpression _expression, Variable saveLocation)
+        private Variable ParseExpression(ASTExpression _expression)
         {
             if (_expression is ASTIdentifier identifier)
             {
@@ -341,7 +355,10 @@ namespace ils
                 this.rightNode = rightNode;
             }
 
-            public override string ToString => $"({Name}, {leftNode.variableName}, {conditionType}, {rightNode.variableName}, {resultVariable.variableName})";
+            public override string GetString()
+            {
+                return $"({Name}, {leftNode.variableName}, {conditionType}, {rightNode.variableName}, {resultVariable.variableName})";
+            }
         }
 
         public class IRTest : IRNode
@@ -355,7 +372,10 @@ namespace ils
                 this.variable = variable;
             }
 
-            public override string ToString => $"({Name}, {variable})";
+            public override string GetString()
+            {
+                return $"({Name}, {variable})";
+            }
         }
 
         public class IRJumpZero : IRNode
@@ -369,7 +389,10 @@ namespace ils
                 this.label = label;
             }
 
-            public override string ToString => $"({Name}, {label})";
+            public override string GetString()
+            {
+                return $"({Name}, {label})";
+            }
         }
 
         public class IRJump : IRNode
@@ -383,7 +406,10 @@ namespace ils
                 this.label = label;
             }
 
-            public override string ToString => $"({Name}, {label})";
+            public override string GetString()
+            {
+                return $"({Name}, {label})";
+            }
         }
 
         public abstract class Variable : IRNode
@@ -393,6 +419,8 @@ namespace ils
         }
         public class NamedVariable : Variable
         {
+            public string value = "";
+
             public NamedVariable(ASTVariableDeclaration declaration)
             {
                 Name = "VAR";
@@ -409,7 +437,15 @@ namespace ils
                 }
             }
 
-            public override string ToString => $"({Name}, {variableName}, {variableType})";
+            public override string GetString()
+            {
+                string r = $"({Name}, {variableName}, {variableType})";
+                if(!string.IsNullOrEmpty(value))
+                {
+                    r += $", {value}";
+                }
+                return r;
+            }
         }
 
         public class TempVariable : Variable
@@ -420,7 +456,10 @@ namespace ils
                 this.variableName = variableName;
             }
 
-            public override string ToString => $"({Name}, {variableName})";
+            public override string GetString()
+            {
+                return $"({Name}, {variableName})";
+            }
         }
 
         public class LiteralVariable : Variable
@@ -435,14 +474,17 @@ namespace ils
                 this.value = value;
             }
 
-            public override string ToString => $"({Name}, {value})";
+            public override string GetString()
+            {
+                return $"({Name}, {value})";
+            }
         }
 
         public abstract class IRNode 
         {
             protected string Name;
 
-            public abstract string ToString { get; }
+            public abstract string GetString();
         }
 
         public class IRAssign : IRNode
@@ -460,7 +502,10 @@ namespace ils
                 this.assignedType = assignedType;
             }
 
-            public override string ToString => $"({Name}, {identifier}, {value})";
+            public override string GetString()
+            {
+                return $"({Name}, {identifier}, {value})";
+            }
         }
 
         public class IRLabel : IRNode 
@@ -481,7 +526,10 @@ namespace ils
                 _labels.Add(labelName, this);
             }
 
-            public override string ToString => $"({Name}, {labelName})";
+            public override string GetString()
+            {
+                return $"({Name}, {labelName})";
+            }
         }
 
         public abstract class IRArithmeticOp : IRNode 
@@ -489,7 +537,11 @@ namespace ils
             public Variable resultLocation;
             public Variable a;
             public Variable b;
-            public override string ToString => $"({Name}, {a.variableName}, {b.variableName}, {resultLocation.variableName})";
+
+            public override string GetString()
+            {
+                return $"({Name}, {a.variableName}, {b.variableName}, {resultLocation.variableName})";
+            }
         }
 
         public class IRAddOp : IRArithmeticOp

@@ -104,7 +104,7 @@ namespace ils
 
         private ASTExpression ParseExpression(int minPrec = 0)
         {
-            ASTExpression leftNode = ParseExpressionNode();
+            ASTExpression leftNode = ParseExpressionNode();            
 
             if (leftNode == null) 
             {
@@ -118,11 +118,20 @@ namespace ils
                 int prec = 0;
 
                 if(currentToken != null)
-                {
+                {                  
                     prec = GetArithmeticOperationPrec(currentToken.tokenType);
                     if(prec == -1 || prec < minPrec)
                     {
                         break;
+                    }
+
+                    if (leftNode is ASTCharLiteral)
+                    {
+                        ErrorHandler.Custom($"[{currentToken.line}] You can't do arithmrtic operations on characters!");
+                    }
+                    if (leftNode is ASTBoolLiteral)
+                    {
+                        ErrorHandler.Custom($"[{currentToken.line}] You can't do arithmrtic operations on booleans!");
                     }
                 }
                 else
@@ -281,28 +290,33 @@ namespace ils
                         ASTExpression expr = ParseExpression();
                         if(expr != null)
                         {
+                            if(expr is ASTCharLiteral)
+                            {
+                                if(variableType.tokenType != TokenType.TYPE_CHAR)
+                                {
+                                    ErrorHandler.Expected("char", variableType.line);
+                                }
+                            }
+                            else if(expr is ASTBoolLiteral)
+                            {
+                                if (variableType.tokenType != TokenType.TYPE_BOOLEAN)
+                                {
+                                    ErrorHandler.Expected("bool", variableType.line);
+                                }
+                            }
+                            else if(expr is ASTIntLiteral)
+                            {
+                                if (variableType.tokenType != TokenType.TYPE_INT)
+                                {
+                                    ErrorHandler.Expected("int ", variableType.line);
+                                }
+                            }
+
                             value = expr;
                         }
                         else
                         {
-                            switch (variableType.tokenType)
-                            {
-                                case TokenType.TYPE_STRING:
-                                    ErrorHandler.Expected("string", variableType.line);
-                                    break;
-                                case TokenType.TYPE_CHAR:
-                                    ErrorHandler.Expected("char", variableType.line);
-                                    break;
-                                case TokenType.TYPE_BOOLEAN:
-                                    ErrorHandler.Expected("bool", variableType.line);
-                                    break;
-                                case TokenType.TYPE_INT:
-                                    ErrorHandler.Expected("int", variableType.line);
-                                    break;
-                                default:
-                                    ErrorHandler.Expected("value", variableType.line);
-                                    break;
-                            }
+                            ErrorHandler.Expected("value", variableType.line);
                         }
 
                         TryConsumeErr(TokenType.SEMICOLON);

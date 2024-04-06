@@ -11,10 +11,10 @@ namespace ils
     {
         private Dictionary<int, Word> _words = new()
         {
-            { 1, new Word(){ byteCount = 1, shortName = Word.ShortName.db, longName = Word.LongName.@byte, reserve = "resb" } },
-            { 2, new Word(){ byteCount = 2, shortName = Word.ShortName.dw, longName = Word.LongName.word, reserve = "resw" } },
-            { 4, new Word(){ byteCount = 4, shortName = Word.ShortName.dd, longName = Word.LongName.dword, reserve = "resd" } },
-            { 8, new Word(){ byteCount = 8, shortName = Word.ShortName.dq, longName = Word.LongName.qword, reserve = "resq" } }
+            { 1, new Word(){ byteCount = 1, shortName = Word.ShortName.db, longName = Word.LongName.@byte, reserve = ".byte" } },
+            { 2, new Word(){ byteCount = 2, shortName = Word.ShortName.dw, longName = Word.LongName.word, reserve = ".word" } },
+            { 4, new Word(){ byteCount = 4, shortName = Word.ShortName.dd, longName = Word.LongName.dword, reserve = ".long" } },
+            { 8, new Word(){ byteCount = 8, shortName = Word.ShortName.dq, longName = Word.LongName.qword, reserve = ".quad" } }
         };
 
         private string asm = "";
@@ -39,7 +39,8 @@ namespace ils
             AddAsm("extern printf");
             foreach (var data in dataSection)
             {
-                AddAsm($"{data.Value.name} {data.Value.word.shortName} 1");
+                AddAsm($"{data.Value.name}:", 0);
+                AddAsm($"{data.Value.word.reserve} 1");
             }
 
             Console.WriteLine('\n' + asm);
@@ -103,6 +104,9 @@ namespace ils
                     case VariableType.BOOL:
                         dataSection.Add(tempVar.variableName, new ReservedVariable() { name = tempVar.variableName, word = _words[1], var = tempVar });
                         break;
+                    case VariableType.IDENTIFIER:
+                        dataSection.Add(tempVar.variableName, new ReservedVariable() { name = tempVar.variableName, word = _words[4], var = tempVar });
+                        break;
                     case VariableType.STRING:
                         //todo
                         break;
@@ -127,6 +131,7 @@ namespace ils
                     AddAsm($"mov {_words[1].longName} [{asign.identifier}], '{asign.value}'");
                     break;
                 case VariableType.IDENTIFIER:
+                    AddAsm($"mov {dataSection[asign.identifier].word.longName} [{asign.identifier}], {asign.value}");
                     break;
             }
         }
@@ -145,6 +150,7 @@ namespace ils
             {
                 GenerateAssign(asign); 
             }
+
         }
 
         private struct Word
