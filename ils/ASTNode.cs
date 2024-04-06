@@ -6,8 +6,6 @@ using System.Threading.Tasks;
 
 namespace ils
 {
-    public abstract class ASTNode { }
-
     public abstract class ASTStatement { }
 
     public class ASTVariableDeclaration(Token name, Token type, ASTExpression value) : ASTStatement
@@ -17,7 +15,7 @@ namespace ils
         public ASTExpression value = value;
     }
 
-    public abstract class ASTExpression : ASTNode { }
+    public abstract class ASTExpression : ASTStatement { }
 
     public enum ScopeType { DEFAULT, IF, LOOP }
     public class ASTScope(List<ASTStatement> statements, ASTScope parentScope, ScopeType scopeType) : ASTStatement
@@ -55,12 +53,12 @@ namespace ils
 
     public class ASTStringLiteral(string value) : ASTExpression
     {
-        public int[] value = value.Select(c => int.Parse(c.ToString())).ToArray();
+        public string value = value;//value.Select(c => int.Parse(c.ToString())).ToArray();
     }
 
     public class ASTCharLiteral(string value) : ASTExpression
     {
-        public int value = value[0];
+        public char value = value[0];
     }
 
     public class ASTBoolLiteral(string value) : ASTExpression
@@ -128,7 +126,7 @@ namespace ils
         public ASTScope scope = scope;
     }
 
-    public class ASTCondition : ASTNode
+    public class ASTCondition : ASTStatement
     {
         public ASTExpression leftNode;
         public enum ConditionType { EQUAL, NOT_EQUAL, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL }

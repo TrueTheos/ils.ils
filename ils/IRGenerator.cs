@@ -12,6 +12,7 @@ namespace ils
 {
     public class IRGenerator
     {
+        public enum VariableType { STRING, INT, CHAR, BOOL, IDENTIFIER }
         protected static Dictionary<string, IRLabel> _labels = new();
         protected static Dictionary<string, NamedVariable> _variables = new();
 
@@ -23,7 +24,7 @@ namespace ils
 
         public List<IRNode> Generate(ASTScope mainScope)
         {
-            ParseScope(mainScope, 0);
+            ParseScope(mainScope, 0, null);
 
             Console.WriteLine("\n");
             foreach (IRNode irNode in _IR)
@@ -34,16 +35,17 @@ namespace ils
             return _IR;
         }
 
-        private string CreateNewTempVar()
+        private string CreateNewTempVar(VariableType varType)
         {
             string varName = $"TEMP_{_tempVariables.Keys.Count}";
             TempVariable tempVar = new TempVariable(varName);
+            tempVar.variableType = varType;
             _tempVariables.Add(varName, tempVar);
             _IR.Add(tempVar);
             return varName;
         }
 
-        private void ParseScope(ASTScope _scope, int scopeIndex, Dictionary<string, Variable> scopeVariables = null)
+        private void ParseScope(ASTScope _scope, int scopeIndex, Dictionary<string, Variable> scopeVariables)
         {
             IRLabel scopeStart = new($"SCOPE_{scopeIndex}_START");
             _IR.Add(scopeStart);
@@ -88,11 +90,11 @@ namespace ils
                 {
                     if (assign.value is ASTIdentifier identifier)
                     {
-                        _IR.Add(new IRAssign(assign.identifier.value, identifier.name));
+                        _IR.Add(new IRAssign(assign.identifier.value, identifier.name, VariableType.IDENTIFIER));
                     }
                     else if (assign.value is ASTIntLiteral intLiteral)
                     {
-                        _IR.Add(new IRAssign(assign.identifier.value, intLiteral.value.ToString()));
+                        _IR.Add(new IRAssign(assign.identifier.value, intLiteral.value.ToString(), VariableType.INT));
                     }
                     else if (assign.value is ASTStringLiteral strLiteral)
                     {
@@ -100,11 +102,11 @@ namespace ils
                     }
                     else if (assign.value is ASTCharLiteral charLiteral)
                     {
-                        _IR.Add(new IRAssign(assign.identifier.value, (charLiteral.value - '0').ToString()));
+                        _IR.Add(new IRAssign(assign.identifier.value, charLiteral.value.ToString(), VariableType.CHAR));
                     }
                     else if (assign.value is ASTBoolLiteral boolLiteral)
                     {
-                        _IR.Add(new IRAssign(assign.identifier.value, boolLiteral.value.ToString()));
+                        _IR.Add(new IRAssign(assign.identifier.value, boolLiteral.value.ToString(), VariableType.BOOL));
                     }
                     else
                     {
@@ -113,11 +115,11 @@ namespace ils
                 }
                 else if(statement is ASTIf ifstmt)
                 {
-                    ParseIf(ifstmt);
+                    ParseIf(ifstmt, localVariables);
                 }
                 else if(statement is ASTWhile whilestmt)
                 {
-                    ParseWhile(whilestmt);
+                    ParseWhile(whilestmt, scopeVariables);
                 }
                 else if(statement is ASTBreak breakstmt)
                 {
@@ -162,27 +164,27 @@ namespace ils
             }
         }
 
-        private void ParseIf(ASTIf ifstmt)
+        private void ParseIf(ASTIf ifstmt, Dictionary<string, Variable> scopeVariables)
         {
             int labelnum = _labels.Count;
 
-            string conditionResultName = CreateNewTempVar();
+            string conditionResultName = CreateNewTempVar(VariableType.BOOL);
 
-            IRLabel label = new($"LABEL_{labelnum}");
+            IRLabel label = new($"IF_{labelnum}");
 
             ParseCondition(ifstmt.cond, _tempVariables[conditionResultName]);
 
             _IR.Add(new IRTest(conditionResultName));
             _IR.Add(new IRJumpZero(label.labelName));
 
-            ParseScope(ifstmt.scope, labelnum);
+            ParseScope(ifstmt.scope, labelnum, scopeVariables);
 
             if(ifstmt.pred != null)
             {
-                IRLabel endLabel = new($"LABEL_{labelnum}_END");
+                IRLabel endLabel = new($"IF_{labelnum}_END");
                 _IR.Add(new IRJump(endLabel.labelName));
                 _IR.Add(label);
-                ParseIfPred(ifstmt.pred, endLabel);
+                ParseIfPred(ifstmt.pred, endLabel, scopeVariables);
                 _IR.Add(endLabel);
             }
             else
@@ -191,14 +193,14 @@ namespace ils
             }
         }
 
-        private void ParseWhile(ASTWhile whilestmt)
+        private void ParseWhile(ASTWhile whilestmt, Dictionary<string, Variable> scopeVariables)
         {
             int labelnum = _labels.Count;
 
-            string conditionResultName = CreateNewTempVar();
+            string conditionResultName = CreateNewTempVar(VariableType.BOOL);
 
-            IRLabel startLabel = new($"LABEL_{labelnum}_START");
-            IRLabel endLabel = new($"LABEL_{labelnum}_END");
+            IRLabel startLabel = new($"WHILE_{labelnum}_START");
+            IRLabel endLabel = new($"WHILE_{labelnum}_END");
 
             ParseCondition(whilestmt.cond, _tempVariables[conditionResultName]);
 
@@ -208,7 +210,7 @@ namespace ils
 
             //TODO: NEED TO ADD JUMP TO THE START OF WHILE AT THE END OF SCOPE
 
-            ParseScope(whilestmt.scope, labelnum);
+            ParseScope(whilestmt.scope, labelnum, scopeVariables);
             _IR.Add(new IRJump(startLabel.labelName));
 
             _IR.Add(endLabel);
@@ -216,12 +218,12 @@ namespace ils
 
         private void ParseCondition(ASTCondition cond, Variable result) 
         {
-            string leftNodeName = CreateNewTempVar();
+            string leftNodeName = CreateNewTempVar(VariableType.INT);
             ParseExpression(cond.leftNode, _tempVariables[leftNodeName]);
 
             if (cond.rightNode != null)
             {
-                string rightNodeName = CreateNewTempVar();
+                string rightNodeName = CreateNewTempVar(VariableType.INT);
                 ParseExpression(cond.rightNode, _tempVariables[rightNodeName]);
 
                 _IR.Add(new IRCondition(result, _tempVariables[leftNodeName], cond.conditionType, _tempVariables[rightNodeName]));
@@ -232,13 +234,13 @@ namespace ils
             }
         }
 
-        private void ParseIfPred(ASTIfPred pred, IRLabel endLabel)
+        private void ParseIfPred(ASTIfPred pred, IRLabel endLabel,Dictionary<string, Variable> scopeVariables)
         {
             int labelNum = _labels.Count;
 
             if(pred is ASTElifPred elif)
             {
-                string conditionResultName = CreateNewTempVar();
+                string conditionResultName = CreateNewTempVar(VariableType.BOOL);
 
                 ParseCondition(elif.cond, _tempVariables[conditionResultName]);
 
@@ -246,19 +248,19 @@ namespace ils
                 _IR.Add(new IRTest(conditionResultName));
                 _IR.Add(new IRJumpZero(label.labelName));
 
-                ParseScope(elif.scope, labelNum);
+                ParseScope(elif.scope, labelNum, scopeVariables);
 
                 _IR.Add(new IRJump(endLabel.labelName));
 
                 if (elif.pred != null)
                 {
                     _IR.Add(label);
-                    ParseIfPred(elif.pred, endLabel);
+                    ParseIfPred(elif.pred, endLabel, scopeVariables);
                 }
             }
             else if(pred is ASTElsePred elsepred)
             {
-                ParseScope(elsepred.scope, labelNum);
+                ParseScope(elsepred.scope, labelNum, scopeVariables);
             }  
         }
 
@@ -266,14 +268,14 @@ namespace ils
         {
             if (_expression is ASTIdentifier identifier)
             {
-                string tempVarName = CreateNewTempVar();
+                string tempVarName = CreateNewTempVar(VariableType.IDENTIFIER);
                 TempVariable tempVar = _tempVariables[tempVarName];
-                _IR.Add(new IRAssign(tempVarName, identifier.name));
+                _IR.Add(new IRAssign(tempVarName, identifier.name, VariableType.IDENTIFIER));
                 return tempVar;
             }
             else if (_expression is ASTIntLiteral intLiteral)
             {
-                _IR.Add(new IRAssign(saveLocation.variableName, intLiteral.value.ToString()));
+                _IR.Add(new IRAssign(saveLocation.variableName, intLiteral.value.ToString(), VariableType.INT));
                 return new LiteralVariable(intLiteral.value.ToString());
             }
             else if (_expression is ASTStringLiteral strLiteral)
@@ -282,22 +284,22 @@ namespace ils
             }
             else if (_expression is ASTCharLiteral charLiteral)
             {
-                _IR.Add(new IRAssign(saveLocation.variableName, (charLiteral.value - '0').ToString()));
+                _IR.Add(new IRAssign(saveLocation.variableName, charLiteral.value.ToString(), VariableType.CHAR));
                 return new LiteralVariable(charLiteral.value.ToString());
             }
             else if (_expression is ASTBoolLiteral boolLiteral)
             {
-                _IR.Add(new IRAssign(saveLocation.variableName, boolLiteral.value.ToString()));
+                _IR.Add(new IRAssign(saveLocation.variableName, boolLiteral.value.ToString(), VariableType.BOOL));
                 return new LiteralVariable(boolLiteral.value.ToString());
             }          
             else if (_expression is ASTArithmeticOperation arithmeticOp)
             {
-                string tempVarName = CreateNewTempVar();
+                string tempVarName = CreateNewTempVar(VariableType.INT);
                 TempVariable tempVar = _tempVariables[tempVarName];
 
                 Variable leftVar = ParseExpression(arithmeticOp.leftNode, tempVar);
 
-                tempVarName = CreateNewTempVar();
+                tempVarName = CreateNewTempVar(VariableType.INT);
                 tempVar = _tempVariables[tempVarName];
 
                 Variable righVar = ParseExpression(arithmeticOp.rightNode, tempVar);
@@ -315,7 +317,7 @@ namespace ils
                         break;
                 }
 
-                _IR.Add(new IRAssign(saveLocation.variableName, tempVarName));
+                _IR.Add(new IRAssign(saveLocation.variableName, tempVarName, VariableType.INT));
                 return tempVar;
             }
 
@@ -387,12 +389,10 @@ namespace ils
         public abstract class Variable : IRNode
         {
             public string variableName = "";
+            public VariableType variableType;
         }
         public class NamedVariable : Variable
         {
-            public enum VariableType { STRING, INT, CHAR, BOOL }
-            public VariableType variableType;
-
             public NamedVariable(ASTVariableDeclaration declaration)
             {
                 Name = "VAR";
@@ -405,6 +405,7 @@ namespace ils
                     case TokenType.TYPE_INT: variableType = VariableType.INT; break;
                     case TokenType.TYPE_CHAR: variableType = VariableType.CHAR; break;
                     case TokenType.TYPE_BOOLEAN: variableType = VariableType.BOOL; break;
+                    case TokenType.IDENTIFIER: variableType = VariableType.IDENTIFIER; break;
                 }
             }
 
@@ -446,15 +447,17 @@ namespace ils
 
         public class IRAssign : IRNode
         {
-            string identifier;
-            string value;
+            public string identifier;
+            public VariableType assignedType;
+            public string value;
 
-            public IRAssign(string identifier, string value)
+            public IRAssign(string identifier, string value, VariableType assignedType)
             {
-                Name = "ASN";  
+                Name = "ASN";
 
                 this.identifier = identifier;
-                this.value = value;                
+                this.value = value;
+                this.assignedType = assignedType;
             }
 
             public override string ToString => $"({Name}, {identifier}, {value})";

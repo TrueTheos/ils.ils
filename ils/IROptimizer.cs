@@ -8,7 +8,7 @@ using static ils.IRGenerator;
 namespace ils
 {
     public class IROptimizer
-    {
+    { 
         private List<IRNode> _baseIR;
 
         private List<IRNode> _optimizedIR;
@@ -20,6 +20,11 @@ namespace ils
             _optimizedIR = _baseIR;
 
             return _optimizedIR;
+        }
+
+        public List<T> GetIRNodesOfType<T>(List<IRNode> nodes) where T : IRNode
+        {
+            return nodes.OfType<T>().ToList();
         }
     }
 }

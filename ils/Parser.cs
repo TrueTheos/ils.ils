@@ -9,10 +9,14 @@ namespace ils
 {
     public class Parser
     {
+        public static 
+
         int _index = 0;
         List<Token> _tokens = new List<Token>();
 
         List<ASTStatement> _statements = new();
+
+        private List<(string variableName, int line)> variables = new(); 
 
         ASTScope _mainScope;
 
@@ -36,6 +40,8 @@ namespace ils
                     return null;
                 }
             }
+
+            Verificator.CheckKeywordUsage(variables);
 
             _mainScope.statements = _statements;
             return _mainScope;
@@ -306,6 +312,7 @@ namespace ils
                         TryConsumeErr(TokenType.SEMICOLON);
                     }
 
+                    variables.Add((identifier.value, identifier.line));
                     return new ASTVariableDeclaration(identifier, variableType, value);
                 }
             

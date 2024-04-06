@@ -1,4 +1,5 @@
 ﻿using ils;
+using static System.Net.Mime.MediaTypeNames;
 
 class ILS
 {
@@ -31,11 +32,21 @@ class ILS
             Parser parser = new();
             ASTScope mainScope = parser.Parse(tokens);
 
-            /*Verificator verificator = new Verificator();
-            verificator.Verify(mainScope);*/
+            Verificator verificator = new Verificator();
+            verificator.Verify(mainScope);
 
             IRGenerator irGenerator = new();
-            irGenerator.Generate(mainScope);
+            var ir = irGenerator.Generate(mainScope);
+            IROptimizer optimizer = new();
+            var optimizedIR = optimizer.GetOptimizedIR(ir);
+            ASMGenerator asmGenerator = new();
+            string asm = asmGenerator.GenerateASM(optimizedIR);
+
+            using (StreamWriter writer = new StreamWriter(OUTPUT_FILE))
+            {
+                writer.Write(asm);
+            }
+
         }
         else
         {
