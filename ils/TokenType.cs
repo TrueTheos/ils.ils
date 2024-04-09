@@ -15,6 +15,7 @@ namespace ils
         COLON, // :
         QUOTATION, // "
         SINGLE_QUATATION, // '
+        COMMA,
 
         PLUS, // +
         MINUS, // -
@@ -42,6 +43,10 @@ namespace ils
         LESS_EQUAL, // <=
         NOT_EQUAL, // !=
         NOT, // !
+
+        FUNCTION,
+        RETURN, //return
+        RETURN_TYPE, //->
 
         WHILE,
         BREAK,

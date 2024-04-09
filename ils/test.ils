@@ -1,1 +1,18 @@
-x: char = 'a';
+number: int = 10;
+
+fun main()
+{
+	number = 1 + 1;
+	print(number);
+}
+
+fun xD()
+{
+}
+/*
+fun foo(a: int;) -> int
+{
+	number = number + 2;
+	c: int = a + number;
+	return c;
+}*/

@@ -99,6 +99,16 @@ namespace ils
                         _tokens.Add(new(TokenType.BREAK, lineCount, buffer));
                         buffer = "";
                     }
+                    else if (buffer == "fun")
+                    {
+                        _tokens.Add(new(TokenType.FUNCTION, lineCount, buffer));
+                        buffer = "";
+                    }
+                    else if (buffer == "return")
+                    {
+                        _tokens.Add(new(TokenType.RETURN, lineCount, buffer));
+                        buffer = "";
+                    }
                     else if(Previous(TokenType.QUOTATION)) 
                     {
                         while(CanPeek() && char.IsLetterOrDigit(Peek()))
@@ -151,6 +161,12 @@ namespace ils
                         Consume();
                     }
                 }
+                else if (Expect("->"))
+                {
+                    Consume();
+                    Consume();
+                    _tokens.Add(new(TokenType.RETURN_TYPE, lineCount, buffer));
+                }
                 else if(Expect("/*"))
                 {
                     Consume();
@@ -183,6 +199,11 @@ namespace ils
                     Consume();
                     Consume();
                     _tokens.Add(new(TokenType.NOT_EQUAL, lineCount, buffer));
+                }
+                else if (Expect(","))
+                {
+                    Consume();
+                    _tokens.Add(new(TokenType.COMMA, lineCount, buffer));
                 }
                 else if (Expect("!"))
                 {

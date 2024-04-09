@@ -23,8 +23,7 @@ namespace ils
 
         public string GenerateASM(List<IRNode> ir)
         {
-            AddAsm("global _start", 0);
-            AddAsm("_start:", 0);
+            AddAsm("global main", 0);
 
             foreach (IRNode node in ir) 
             {
@@ -36,11 +35,14 @@ namespace ils
             AddAsm("syscall");
 
             AddAsm("section .data", 0);
+            AddAsm("strFormat db \"%s\", 0");
+            AddAsm("intFormat db \"%d\", 0");
+            AddAsm("charFormat db \"%c\", 0");
             AddAsm("extern printf");
             foreach (var data in dataSection)
             {
                 AddAsm($"{data.Value.name}:", 0);
-                AddAsm($"{data.Value.word.reserve} 1");
+                AddAsm($"{data.Value.word.reserve} {data.Value.var.value}");
             }
 
             Console.WriteLine('\n' + asm);
@@ -59,6 +61,11 @@ namespace ils
             return dataSection.ContainsKey(name);
         }
 
+        private void GenerateFunction(IRFunction func)
+        {
+            AddAsm($"{func.name}:", 0);
+        }
+
         private void GenerateVariable(Variable var)
         {
             if(var is NamedVariable namedVar)
@@ -72,46 +79,22 @@ namespace ils
                 switch (namedVar.variableType)
                 {
                     case VariableType.CHAR:
-                        dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[1], var = namedVar });
+                        dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[1],
+                            var = namedVar});
                         break;
                     case VariableType.INT:
-                        dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[4], var = namedVar });
+                        dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[4],
+                            var = namedVar});
                         break;
                     case VariableType.BOOL:
-                        dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[1], var = namedVar });
+                        dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[1],
+                            var = namedVar});
                         break;
                     case VariableType.STRING:
                         //todo
                         break;
                 }
-            }
-            if(var is TempVariable tempVar)
-            {
-                if (VarExists(tempVar.variableName))
-                {
-                    ErrorHandler.Custom($"Variable {tempVar.variableName} already exists!");
-                    return;
-                }
-
-                switch (tempVar.variableType)
-                {
-                    case VariableType.CHAR:
-                        dataSection.Add(tempVar.variableName, new ReservedVariable() { name = tempVar.variableName, word = _words[1], var = tempVar });
-                        break;
-                    case VariableType.INT:
-                        dataSection.Add(tempVar.variableName, new ReservedVariable() { name = tempVar.variableName, word = _words[4], var = tempVar });
-                        break;
-                    case VariableType.BOOL:
-                        dataSection.Add(tempVar.variableName, new ReservedVariable() { name = tempVar.variableName, word = _words[1], var = tempVar });
-                        break;
-                    case VariableType.IDENTIFIER:
-                        dataSection.Add(tempVar.variableName, new ReservedVariable() { name = tempVar.variableName, word = _words[4], var = tempVar });
-                        break;
-                    case VariableType.STRING:
-                        //todo
-                        break;
-                }
-            }
+            }           
         }
 
         private void GenerateAssign(IRAssign asign)
@@ -125,10 +108,10 @@ namespace ils
                     AddAsm($"mov {_words[4].longName} [{asign.identifier}], {asign.value}");
                     break;
                 case VariableType.CHAR:
-                    AddAsm($"mov {_words[1].longName} [{asign.identifier}], '{asign.value}'");
+                    AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
                     break;
                 case VariableType.BOOL:
-                    AddAsm($"mov {_words[1].longName} [{asign.identifier}], '{asign.value}'");
+                    AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
                     break;
                 case VariableType.IDENTIFIER:
                     AddAsm($"mov {dataSection[asign.identifier].word.longName} [{asign.identifier}], {asign.value}");
@@ -138,19 +121,10 @@ namespace ils
 
         private void GenerateIRNode(IRNode node)
         {
-            if(node is IRLabel label)
-            {
-                AddAsm($"{label.labelName}:");
-            }
-            if(node is Variable variable)
-            {
-                GenerateVariable(variable);           
-            }
-            if(node is IRAssign asign)
-            {
-                GenerateAssign(asign); 
-            }
-
+            if(node is IRLabel label) AddAsm($".{label.labelName}:");
+            if (node is Variable variable) GenerateVariable(variable);
+            if(node is IRAssign asign) GenerateAssign(asign);
+            if(node is IRFunction func) GenerateFunction(func);
         }
 
         private struct Word
@@ -168,6 +142,7 @@ namespace ils
             public string name;
             public Word word;
             public Variable var;
+            public string initialValue;
         }
     }
 }

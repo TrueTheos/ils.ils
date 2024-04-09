@@ -17,7 +17,7 @@ namespace ils
 
     public abstract class ASTExpression : ASTStatement { }
 
-    public enum ScopeType { DEFAULT, IF, LOOP }
+    public enum ScopeType { DEFAULT, IF, LOOP, FUNCTION }
     public class ASTScope(List<ASTStatement> statements, ASTScope parentScope, ScopeType scopeType) : ASTStatement
     {
         public List<ASTStatement> statements = statements;
@@ -31,10 +31,51 @@ namespace ils
 
         public List<T> GetStatementsOfType<T>() where T : ASTStatement
         {
-            return statements.OfType<T>().ToList();
+            List<T> r = statements.OfType<T>().ToList();
+            return r;
         }     
     }
     
+    public class ASTFunction : ASTStatement
+    {
+        public Token identifier;
+        public List<ASTVariableDeclaration> parameters;
+        public Token returnType;
+        public ASTScope scope;
+        public ASTReturn returnNode;
+
+        public ASTFunction(Token identifier, List<ASTVariableDeclaration> parameters, Token returnType, ASTScope scope, ASTReturn returnNode)
+        {
+            this.identifier = identifier;
+            this.parameters = parameters;
+            this.returnType = returnType;
+            this.scope = scope;
+            this.returnNode = returnNode;
+        }
+    }
+
+    public class ASTFunctionCall : ASTExpression
+    {
+        public Token identifier;
+        public List<ASTExpression> arguemnts;
+        public ASTFunctionCall(Token identifier, List<ASTExpression> arguments)
+        {
+            this.identifier = identifier;
+            this.arguemnts = arguments;
+        }
+    }
+
+    public class ASTReturn : ASTExpression
+    {
+        public ASTExpression value;
+
+        public  ASTReturn(ASTExpression value) 
+        {
+            this.value = value;
+        }
+    }
+
+
     public class ASTAssign(Token identifier, ASTExpression value) : ASTStatement
     {
         public Token identifier = identifier;

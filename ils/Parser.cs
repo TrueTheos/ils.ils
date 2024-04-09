@@ -1,36 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ils
+﻿namespace ils
 {
     public class Parser
     {
-        public static 
-
         int _index = 0;
         List<Token> _tokens = new List<Token>();
 
         List<ASTStatement> _statements = new();
 
-        private List<(string variableName, int line)> variables = new(); 
+        private List<(string variableName, int line)> variables = new();
 
         ASTScope _mainScope;
 
         ASTScope _currentScope;
 
-        public ASTScope Parse(List<Token> tokens) 
+        public ASTScope Parse(List<Token> tokens)
         {
             _tokens = tokens;
             _mainScope = new(null, null, ScopeType.DEFAULT);
             _currentScope = _mainScope;
 
-            while(CanPeek())
+            while (CanPeek())
             {
-                if(ParseStatement() is ASTStatement statement && statement != null)
+                if (ParseStatement() is ASTStatement statement && statement != null)
                 {
                     _statements.Add(statement);
                 }
@@ -61,12 +52,12 @@ namespace ils
             {
                 if (TryConsume(TokenType.LITERAL_STR) is Token strLiteral && strLiteral != null)
                 {
-                    if(TryConsume(TokenType.QUOTATION) != null)
+                    if (TryConsume(TokenType.QUOTATION) != null)
                     {
                         return new ASTStringLiteral(strLiteral.value);
                     }
                 }
-                
+
             }
             if (TryConsume(TokenType.SINGLE_QUATATION) != null)
             {
@@ -87,14 +78,14 @@ namespace ils
             {
                 return new ASTBoolLiteral("false");
             }
-            if(TryConsume(TokenType.OPEN_PARENTHESIS) != null)
+            if (TryConsume(TokenType.OPEN_PARENTHESIS) != null)
             {
                 ASTExpression expr = ParseExpression();
-                if(expr == null) 
+                if (expr == null)
                 {
                     ErrorHandler.Expected("expression", Peek().line);
                     return null;
-                } 
+                }
                 TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
                 return expr;
             }
@@ -104,23 +95,23 @@ namespace ils
 
         private ASTExpression ParseExpression(int minPrec = 0)
         {
-            ASTExpression leftNode = ParseExpressionNode();            
+            ASTExpression leftNode = ParseExpressionNode();
 
-            if (leftNode == null) 
+            if (leftNode == null)
             {
-                ErrorHandler.Expected("expression", Peek().line);
+                //ErrorHandler.Expected("expression", Peek().line);
                 return null;
             }
 
-            while(true)
+            while (true)
             {
                 Token currentToken = Peek();
                 int prec = 0;
 
-                if(currentToken != null)
-                {                  
+                if (currentToken != null)
+                {
                     prec = GetArithmeticOperationPrec(currentToken.tokenType);
-                    if(prec == -1 || prec < minPrec)
+                    if (prec == -1 || prec < minPrec)
                     {
                         break;
                     }
@@ -144,7 +135,7 @@ namespace ils
                 int nextMinPrec = prec + 1;
                 ASTExpression rightNode = ParseExpression(nextMinPrec);
 
-                if(rightNode == null) 
+                if (rightNode == null)
                 {
                     ErrorHandler.Expected("expression", nextToken.line);
                     return null;
@@ -161,7 +152,7 @@ namespace ils
 
         private ASTScope ParseScope(ASTScope parentScope, ScopeType scopeType)
         {
-            if(TryConsume(TokenType.OPEN_CURLY) == null)
+            if (TryConsume(TokenType.OPEN_CURLY) == null)
             {
                 return null;
             }
@@ -170,7 +161,7 @@ namespace ils
 
             ASTScope scope = new ASTScope(null, parentScope, scopeType);
             _currentScope = scope;
-            while(ParseStatement() is ASTStatement stmt && stmt != null)
+            while (ParseStatement() is ASTStatement stmt && stmt != null)
             {
                 statements.Add(stmt);
             }
@@ -196,7 +187,7 @@ namespace ils
 
             Token conditionType = Peek();
             TokenType type = conditionType.tokenType;
-            if(type == TokenType.EQUALS || type == TokenType.NOT_EQUAL || type == TokenType.GREATER 
+            if (type == TokenType.EQUALS || type == TokenType.NOT_EQUAL || type == TokenType.GREATER
                 || type == TokenType.GREATER_EQUAL || type == TokenType.LESS || type == TokenType.LESS_EQUAL)
             {
                 Consume();
@@ -223,7 +214,7 @@ namespace ils
 
         private ASTIfPred ParseIfPred()
         {
-            if(TryConsume(TokenType.ELIF) != null)
+            if (TryConsume(TokenType.ELIF) != null)
             {
                 ASTCondition cond = ParseCondition();
 
@@ -245,7 +236,7 @@ namespace ils
 
                 return new ASTElifPred(cond, scope, pred);
             }
-            if(TryConsume(TokenType.ELSE) != null)
+            if (TryConsume(TokenType.ELSE) != null)
             {
                 ASTScope scope = ParseScope(_currentScope, ScopeType.IF);
 
@@ -261,83 +252,160 @@ namespace ils
             return null;
         }
 
+        private ASTFunction ParseFunction()
+        {
+            Token identifier = TryConsumeErr(TokenType.IDENTIFIER);
+            Token variableType = null;
+            TryConsumeErr(TokenType.OPEN_PARENTHESIS);
+
+            List<ASTVariableDeclaration> parameters = new();
+
+            while (Expect(TokenType.IDENTIFIER))
+            {
+                parameters.Add(ParseVariableDeclaration());
+            }
+
+            TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
+
+            if (TryConsume(TokenType.RETURN_TYPE) != null)
+            {
+                variableType = Consume();
+
+                switch (variableType.tokenType)
+                {
+                    case TokenType.TYPE_STRING:
+                    case TokenType.TYPE_CHAR:
+                    case TokenType.TYPE_BOOLEAN:
+                    case TokenType.TYPE_INT:
+                        break;
+                    default:
+                        ErrorHandler.Expected("return type", variableType.line);
+                        break;
+                }
+            }
+
+            ASTScope scope = ParseScope(_currentScope, ScopeType.FUNCTION);
+
+            return new ASTFunction(identifier, parameters, variableType, scope, variableType != null ? scope.GetStatementsOfType<ASTReturn>().Last() : null);
+        }
+
+        private ASTVariableDeclaration ParseVariableDeclaration()
+        {
+            Token identifier = Consume();
+            Consume();
+            Token variableType = Consume();
+
+            switch (variableType.tokenType)
+            {
+                case TokenType.TYPE_STRING:
+                case TokenType.TYPE_CHAR:
+                case TokenType.TYPE_BOOLEAN:
+                case TokenType.TYPE_INT:
+                    break;
+                default:
+                    ErrorHandler.Expected("variable type", variableType.line);
+                    break;
+            }
+
+            ASTExpression value = null;
+
+            if (TryConsume(TokenType.ASSIGN) != null)
+            {
+                ASTExpression expr = ParseExpression();
+                if (expr != null)
+                {
+                    if (expr is ASTCharLiteral)
+                    {
+                        if (variableType.tokenType != TokenType.TYPE_CHAR)
+                        {
+                            ErrorHandler.Expected("char", variableType.line);
+                        }
+                    }
+                    else if (expr is ASTBoolLiteral)
+                    {
+                        if (variableType.tokenType != TokenType.TYPE_BOOLEAN)
+                        {
+                            ErrorHandler.Expected("bool", variableType.line);
+                        }
+                    }
+                    else if (expr is ASTIntLiteral)
+                    {
+                        if (variableType.tokenType != TokenType.TYPE_INT)
+                        {
+                            ErrorHandler.Expected("int ", variableType.line);
+                        }
+                    }
+                    else if (expr is ASTStringLiteral)
+                    {
+                        if (variableType.tokenType != TokenType.TYPE_STRING)
+                        {
+                            ErrorHandler.Expected("string ", variableType.line);
+                        }
+                    }
+
+                    value = expr;
+                }
+                else
+                {
+                    ErrorHandler.Expected("value", variableType.line);
+                }
+
+                TryConsumeErr(TokenType.SEMICOLON);
+            }
+            else
+            {
+                TryConsumeErr(TokenType.SEMICOLON);
+            }
+
+            variables.Add((identifier.value, identifier.line));
+            return new ASTVariableDeclaration(identifier, variableType, value);
+        }
+
+        private ASTFunctionCall ParseFunctionCall()
+        {
+            Token identifier = Consume();
+            Consume();
+
+            List<ASTExpression> arguments = new();
+
+            ASTExpression expr = ParseExpression();
+
+            while (expr != null)
+            {
+                arguments.Add(expr);
+
+                if (TryConsume(TokenType.SEMICOLON) != null)
+                {
+                    expr = ParseExpression();
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
+
+            return new ASTFunctionCall(identifier, arguments);
+        }
+
         private ASTStatement ParseStatement()
         {
-            if(Expect(TokenType.IDENTIFIER))
+            if (Expect(TokenType.IDENTIFIER))
             {
-                if(Expect(TokenType.COLON, 1))
+                if (Expect(TokenType.COLON, 1))
                 {
-                    Token identifier = Consume();
-                    Consume();
-                    Token variableType = Consume();
-
-                    switch(variableType.tokenType) 
-                    {
-                        case TokenType.TYPE_STRING:
-                        case TokenType.TYPE_CHAR:
-                        case TokenType.TYPE_BOOLEAN:
-                        case TokenType.TYPE_INT:
-                            break;
-                        default:
-                            ErrorHandler.Expected("variable type", variableType.line);
-                            break;
-                    }
-
-                    ASTExpression value = null;
-
-                    if(TryConsume(TokenType.ASSIGN) != null)
-                    {
-                        ASTExpression expr = ParseExpression();
-                        if(expr != null)
-                        {
-                            if(expr is ASTCharLiteral)
-                            {
-                                if(variableType.tokenType != TokenType.TYPE_CHAR)
-                                {
-                                    ErrorHandler.Expected("char", variableType.line);
-                                }
-                            }
-                            else if(expr is ASTBoolLiteral)
-                            {
-                                if (variableType.tokenType != TokenType.TYPE_BOOLEAN)
-                                {
-                                    ErrorHandler.Expected("bool", variableType.line);
-                                }
-                            }
-                            else if(expr is ASTIntLiteral)
-                            {
-                                if (variableType.tokenType != TokenType.TYPE_INT)
-                                {
-                                    ErrorHandler.Expected("int ", variableType.line);
-                                }
-                            }
-
-                            value = expr;
-                        }
-                        else
-                        {
-                            ErrorHandler.Expected("value", variableType.line);
-                        }
-
-                        TryConsumeErr(TokenType.SEMICOLON);
-                    }
-                    else
-                    {
-                        TryConsumeErr(TokenType.SEMICOLON);
-                    }
-
-                    variables.Add((identifier.value, identifier.line));
-                    return new ASTVariableDeclaration(identifier, variableType, value);
+                    return ParseVariableDeclaration();
                 }
-            
-                if(Expect(TokenType.ASSIGN, 1))
+
+                if (Expect(TokenType.ASSIGN, 1))
                 {
                     Token identifier = Consume();
                     Consume();
 
                     ASTExpression expr = ParseExpression();
 
-                    if(expr == null)
+                    if (expr == null)
                     {
                         ErrorHandler.Expected("expression", Peek().line);
                         return null;
@@ -347,13 +415,20 @@ namespace ils
 
                     return new ASTAssign(identifier, expr);
                 }
+
+                if (Expect(TokenType.OPEN_PARENTHESIS, 1))
+                {
+                    ASTFunctionCall call = ParseFunctionCall();
+                    TryConsumeErr(TokenType.SEMICOLON);
+                    return call;
+                }
             }
 
-            if(Expect(TokenType.OPEN_CURLY))
+            if (Expect(TokenType.OPEN_CURLY))
             {
                 ASTScope scope = ParseScope(_currentScope, ScopeType.DEFAULT);
 
-                if(scope == null)
+                if (scope == null)
                 {
                     ErrorHandler.Expected("scope", Peek().line);
                     return null;
@@ -362,7 +437,12 @@ namespace ils
                 return scope;
             }
 
-            if(TryConsume(TokenType.IF) != null)
+            if (TryConsume(TokenType.FUNCTION) != null)
+            {
+                return ParseFunction();
+            }
+
+            if (TryConsume(TokenType.IF) != null)
             {
                 ASTCondition cond = ParseCondition();
 
@@ -384,7 +464,22 @@ namespace ils
                 return new ASTIf(cond, scope, pred);
             }
 
-            if(TryConsume(TokenType.WHILE) != null)
+            if (TryConsume(TokenType.RETURN) != null)
+            {
+                ASTExpression ret = ParseExpression();
+
+                if (ret == null)
+                {
+                    ErrorHandler.Expected("expression", Peek().line);
+                    return null;
+                }
+
+                TryConsumeErr(TokenType.SEMICOLON);
+
+                return new ASTReturn(ret);
+            }
+
+            if (TryConsume(TokenType.WHILE) != null)
             {
                 ASTCondition cond = ParseCondition();
 
@@ -405,9 +500,9 @@ namespace ils
                 return new ASTWhile(cond, scope);
             }
 
-            if(TryConsume(TokenType.BREAK) != null)
+            if (TryConsume(TokenType.BREAK) != null)
             {
-                if(_currentScope == _mainScope)
+                if (_currentScope == _mainScope)
                 {
                     ErrorHandler.Custom($"[{Peek().line}] You can not break out of main scope!");
                     return null;
@@ -432,7 +527,7 @@ namespace ils
 
         private Token Peek(int offset = 0)
         {
-            if(_index + offset >= _tokens.Count)
+            if (_index + offset >= _tokens.Count)
             {
                 return null;
             }
@@ -454,9 +549,9 @@ namespace ils
             return CanPeek() && Peek(offset).tokenType == type;
         }
 
-        private Token TryConsumeErr(TokenType type) 
+        private Token TryConsumeErr(TokenType type)
         {
-            if(Expect(type))
+            if (Expect(type))
             {
                 return Consume();
             }
@@ -466,7 +561,7 @@ namespace ils
 
         private Token TryConsume(TokenType type)
         {
-            if(Expect(type))
+            if (Expect(type))
             {
                 return Consume();
             }
