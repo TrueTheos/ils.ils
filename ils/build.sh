@@ -1,5 +1,5 @@
 #!/bin/bash
-nasm -felf64 out.asm -o out.o
-ld out.o -o out -lc
+nasm -f elf64 out.asm
+gcc -no-pie out.o -o out -lc
 
 #echo $?what 
