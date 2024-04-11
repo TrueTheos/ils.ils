@@ -117,18 +117,18 @@ namespace ils
         {
             this.leftNode = leftNode;
             this.rightNode = rightNode;
-            switch (operation.value)
+            switch (operation.tokenType)
             {
-                case "+":
+                case TokenType.PLUS:
                     this.operation = ArithmeticOpType.ADD;
                     break;
-                case "-":
+                case TokenType.MINUS:
                     this.operation = ArithmeticOpType.SUB;
                     break;
-                case "/":
+                case TokenType.SLASH:
                     this.operation = ArithmeticOpType.DIV;
                     break;
-                case "*":
+                case TokenType.STAR:
                     this.operation = ArithmeticOpType.MUL;
                     break;
             }

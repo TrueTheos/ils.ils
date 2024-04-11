@@ -1,8 +1,10 @@
-number: int = 10;
+number: int;
 
 fun main()
 {
-	number = number + 2 + 3;
+	number = 10 / 2;
+	z: int = number;
+	number = z + number * 2;
 	exit(number);
 }
 

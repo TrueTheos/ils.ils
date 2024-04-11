@@ -125,7 +125,7 @@ namespace ils
                         {                         
                             Variable var = ParseExpression(varDeclaration.value);
 
-                            if(var is TempVariable tempVar)
+                            /*if(var is TempVariable tempVar)
                             {
                                 _IR.Add(new IRAssign(newVar, tempVar.variableName, tempVar.variableType));
                             }
@@ -136,6 +136,31 @@ namespace ils
                             if (var is LiteralVariable literalVar)
                             {
                                 newVar.SetValue(literalVar.value);
+                            }
+                            if(var is LocalVariable localVar)
+                            {
+                                _IR.Add(new IRAssign(newVar, localVar.variableName, localVar.variableType));
+                            }*/
+
+                            if (var is TempVariable tempVar)
+                            {
+                                newVar.SetValue(tempVar.variableName);
+                                newVar.variableType = VariableType.IDENTIFIER;
+                            }
+                            if (var is NamedVariable namedVar)
+                            {
+                                newVar.SetValue(namedVar.variableName);
+                                newVar.variableType = VariableType.IDENTIFIER;
+                            }
+                            if (var is LiteralVariable literalVar)
+                            {
+                                newVar.SetValue(literalVar.value);
+                                newVar.variableType = literalVar.variableType;
+                            }
+                            if (var is LocalVariable localVar)
+                            {
+                                newVar.SetValue(localVar.variableName);
+                                newVar.variableType = VariableType.IDENTIFIER;
                             }
                         }
                     }
@@ -215,6 +240,13 @@ namespace ils
                         }
                     }
                 }
+
+                foreach (var temp in _tempVariables)
+                {
+                    _IR.Add(new IRDestroyTemp(temp.Key));                    
+                }
+
+                _tempVariables.Clear();
             }
 
             if (_currentScope.id != 0) _IR.Add(scopeEnd);
@@ -512,13 +544,13 @@ namespace ils
                 {
                     tempVarName = CreateNewTempVar(VariableType.INT, "0");
                     tempVar = _tempVariables[tempVarName];
-                    _IR.Add(new IRAssign(tempVar, _tempVarr.variableName, _tempVarr.variableType));
+                    _IR.Add(new IRAssign(tempVar, _tempVarr.variableName, VariableType.IDENTIFIER));
                 }
                 if (rightVar is NamedVariable namedVarr)
                 {
                     tempVarName = CreateNewTempVar(VariableType.INT, "0");
                     tempVar = _tempVariables[tempVarName];
-                    _IR.Add(new IRAssign(tempVar, namedVarr.variableName, namedVarr.variableType));
+                    _IR.Add(new IRAssign(tempVar, namedVarr.variableName, VariableType.IDENTIFIER));
                 }
                 if (rightVar is LiteralVariable literalVarr)
                 {
@@ -532,21 +564,7 @@ namespace ils
                 tempVarName = CreateNewTempVar(VariableType.INT, "0");
                 tempVar = _tempVariables[tempVarName];
 
-                switch (arithmeticOp.operation)
-                {
-                    case ArithmeticOpType.ADD:
-                        _IR.Add(new IRAddOp(tempVar, leftVar, rightVar));
-                        break;
-                    case ArithmeticOpType.SUB:
-                        _IR.Add(new IRSubOp(tempVar, leftVar, rightVar));
-                        break;
-                    case ArithmeticOpType.MUL:
-                        _IR.Add(new IRMulOp(tempVar, leftVar, rightVar));
-                        break;
-                    case ArithmeticOpType.DIV:
-                        _IR.Add(new IRDivOp(tempVar, leftVar, rightVar));
-                        break;
-                }
+                _IR.Add(new IRArithmeticOp(tempVar, leftVar, rightVar, arithmeticOp.operation));
 
                 //_IR.Add(new IRAssign(saveLocation.variableName, tempVarName, VariableType.INT));
                 return tempVar;
@@ -554,6 +572,23 @@ namespace ils
 
             return null;
         }
+
+        public class IRDestroyTemp : IRNode
+        {
+            public string temp;
+
+            public IRDestroyTemp(string temp)
+            {
+                Name = "DTP";
+                this.temp = temp;
+            }
+
+            public override string GetString()
+            {
+                return $"({Name}, {temp})";
+            }
+        }
+
 
         public class IRNewStack : IRNode
         {
@@ -750,11 +785,21 @@ namespace ils
 
                 switch (declaration.type)
                 {
-                    case TokenType.TYPE_STRING: variableType = VariableType.STRING; break;
-                    case TokenType.TYPE_INT: variableType = VariableType.INT; break;
-                    case TokenType.TYPE_CHAR: variableType = VariableType.CHAR; break;
-                    case TokenType.TYPE_BOOLEAN: variableType = VariableType.BOOL; break;
-                    case TokenType.IDENTIFIER: variableType = VariableType.IDENTIFIER; break;
+                    case TokenType.TYPE_STRING: variableType = VariableType.STRING;
+                        if (declaration.value == null) SetValue(@"\0");
+                        break;
+                    case TokenType.TYPE_INT: variableType = VariableType.INT;
+                        if (declaration.value == null) SetValue("0");
+                        break;
+                    case TokenType.TYPE_CHAR: variableType = VariableType.CHAR;
+                        if (declaration.value == null) SetValue("0");
+                        break;
+                    case TokenType.TYPE_BOOLEAN: variableType = VariableType.BOOL;
+                        if (declaration.value == null) SetValue("0");
+                        break;
+                    case TokenType.IDENTIFIER: variableType = VariableType.IDENTIFIER;
+                        if (declaration.value == null) SetValue("[]");
+                        break;
                 }
             }
 
@@ -774,11 +819,26 @@ namespace ils
 
                 switch (declaration.type)
                 {
-                    case TokenType.TYPE_STRING: variableType = VariableType.STRING; break;
-                    case TokenType.TYPE_INT: variableType = VariableType.INT; break;
-                    case TokenType.TYPE_CHAR: variableType = VariableType.CHAR; break;
-                    case TokenType.TYPE_BOOLEAN: variableType = VariableType.BOOL; break;
-                    case TokenType.IDENTIFIER: variableType = VariableType.IDENTIFIER; break;
+                    case TokenType.TYPE_STRING:
+                        variableType = VariableType.STRING;
+                        if (declaration.value == null) SetValue(@"\0");
+                        break;
+                    case TokenType.TYPE_INT:
+                        variableType = VariableType.INT;
+                        if (declaration.value == null) SetValue("0");
+                        break;
+                    case TokenType.TYPE_CHAR:
+                        variableType = VariableType.CHAR;
+                        if (declaration.value == null) SetValue("0");
+                        break;
+                    case TokenType.TYPE_BOOLEAN:
+                        variableType = VariableType.BOOL;
+                        if (declaration.value == null) SetValue("0");
+                        break;
+                    case TokenType.IDENTIFIER:
+                        variableType = VariableType.IDENTIFIER;
+                        if (declaration.value == null) SetValue("[]");
+                        break;
                 }
             }
 
@@ -874,63 +934,40 @@ namespace ils
             }
         }
 
-        public abstract class IRArithmeticOp : IRNode 
+        public class IRArithmeticOp : IRNode 
         {
             public Variable resultLocation;
             public Variable a;
             public Variable b;
+            public ArithmeticOpType opType;
+
+            public IRArithmeticOp(Variable resultLocation, Variable a, Variable b, ArithmeticOpType opType)
+            {
+                this.resultLocation = resultLocation;
+                this.a = a;
+                this.b = b;
+                this.opType = opType;
+
+                switch (opType)
+                {
+                    case ArithmeticOpType.ADD:
+                        Name = "ADD";
+                        break;
+                    case ArithmeticOpType.MUL:
+                        Name = "MUL";
+                        break;
+                    case ArithmeticOpType.SUB:
+                        Name = "SUB";
+                        break;
+                    case ArithmeticOpType.DIV:
+                        Name = "DIV";
+                        break;
+                }
+            }
 
             public override string GetString()
             {
                 return $"({Name}, {resultLocation.variableName} = {a.variableName}, {b.variableName})";
-            }
-        }
-
-        public class IRAddOp : IRArithmeticOp
-        {
-            public IRAddOp(Variable result, Variable a, Variable b)
-            {
-                Name = "ADD";
-
-                this.resultLocation = result;
-                this.a = a;
-                this.b = b;
-            }
-        }
-
-        public class IRSubOp : IRArithmeticOp
-        {
-            public IRSubOp(Variable result, Variable a, Variable b)
-            {
-                Name = "SUB";
-
-                this.resultLocation = result;
-                this.a = a;
-                this.b = b;
-            }        
-        }
-
-        public class IRMulOp : IRArithmeticOp
-        {
-            public IRMulOp(Variable result, Variable a, Variable b)
-            {
-                Name = "MUL";
-
-                this.resultLocation = result;
-                this.a = a;
-                this.b = b;
-            }
-        }
-
-        public class IRDivOp : IRArithmeticOp
-        {
-            public IRDivOp(Variable result, Variable a, Variable b)
-            {
-                Name = "DIV";
-
-                this.resultLocation = result;
-                this.a = a;
-                this.b = b;
             }
         }
 

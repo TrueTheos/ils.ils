@@ -44,7 +44,7 @@ namespace ils
         private void NewStack()
         {
             AddAsm("push rbp");
-            AddAsm("mov rbp, rsp");
+            Mov("rbp", "rsp");
         }
 
         private void RestoreStack()
@@ -144,26 +144,43 @@ namespace ils
             {
                 GenerateTempVariable(tempVar);
             }
+            if(var is LocalVariable localVar)
+            {
+                GenerateTempVariable(localVar);
+            }
         }
 
-        public static void GenerateTempVariable(TempVariable temp)
+        public static void GenerateTempVariable(Variable var)
         {
-            switch (temp.variableType)
+            string reg = _availableRegs.Dequeue();
+            _usedRegs.Add(var.variableName, reg);
+
+            switch (var.variableType)
             {
                 case VariableType.STRING:
                     break;
                 case VariableType.INT:
-                    string reg = _availableRegs.Dequeue();
-                    _usedRegs.Add(temp.variableName, reg);
-                    AddAsm($"mov {reg}, {temp.value}");
+                    Mov(reg, var.value);
                     break;
                 case VariableType.CHAR:
                     break;
                 case VariableType.BOOL:
                     break;
                 case VariableType.IDENTIFIER:
+                    string val = "";
+                    if (_dataSection.TryGetValue(var.value, out ReservedVariable res))
+                    {
+                        val = $"[{res.var.variableName}]";
+                    }
+                    else val = _usedRegs[var.value];
+                    Mov(reg, val);
                     break;
             }
+        }
+
+        public static void Mov(string a, string b)
+        {
+            AddAsm($"mov {a}, {b}");
         }
 
         private void GenerateAssign(IRAssign asign)
@@ -180,10 +197,10 @@ namespace ils
                     val = asign.value;
                     break;
                 case VariableType.CHAR:
-                    AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
+                    //AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
                     break;
                 case VariableType.BOOL:
-                    AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
+                    //AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
                     break;
                 case VariableType.IDENTIFIER:
                     if (_dataSection.TryGetValue(asign.value, out ReservedVariable var))
@@ -194,33 +211,59 @@ namespace ils
                     break;
             }
 
-            AddAsm($"mov {location}, {val}");
+            Mov(location, val);
         }
 
         private void GenerateArithmeticOP(IRArithmeticOp arop)
         {
-            if(arop is IRAddOp)
+            string location = _usedRegs[arop.resultLocation.variableName];
+
+            string a = GetLocation(arop.a);
+            string b = GetLocation(arop.b);
+
+            switch (arop.opType)
             {
-                string location = _usedRegs[arop.resultLocation.variableName];
-
-                string a = GetLocation(arop.a);
-                string b = GetLocation(arop.b);
-
-                AddAsm($"add {location}, {a}");
-                AddAsm($"add {location}, {b}");
+                case ArithmeticOpType.ADD:
+                    Mov(location, a);
+                    AddAsm($"add {location}, {b}");
+                    break;
+                case ArithmeticOpType.MUL:
+                    Mov(location, a);
+                    AddAsm($"imul {location}, {b}");
+                    break;
+                case ArithmeticOpType.SUB:
+                    Mov(location, a);
+                    AddAsm($"sub {location}, {b}");
+                    break;
+                case ArithmeticOpType.DIV:
+                    Mov("rax", a);
+                    Mov("rbx", b);
+                    AddAsm($"cqo");
+                    AddAsm($"div rbx");
+                    Mov(location, "rax");
+                    break;
             }
+        }
+
+        private void GenerateDestroyTemp(IRDestroyTemp dtp) 
+        {
+            string reg = _usedRegs[dtp.temp];
+
+            _availableRegs.Enqueue(reg);
+            _usedRegs.Remove(dtp.temp);
         }
 
         private void GenerateIRNode(IRNode node)
         {
             if (node is IRLabel label) { AddAsm($".{label.labelName}:"); }
             if (node is Variable variable) { GenerateVariable(variable); }
-            if(node is IRAssign asign) { GenerateAssign(asign); }
-            if(node is IRFunction func) { GenerateFunction(func); }
-            if (node is IRNewStack newStack) { NewStack();}
-            if (node is IRRestoreStack restoreStack) { RestoreStack();}
-            if(node is IRArithmeticOp arOp) { GenerateArithmeticOP(arOp); }
-            if(node is IRFunctionCall call) { GenerateFunctionCall(call); }
+            if (node is IRAssign asign) { GenerateAssign(asign); }
+            if (node is IRFunction func) { GenerateFunction(func); }
+            if (node is IRNewStack newStack) { NewStack(); }
+            if (node is IRRestoreStack restoreStack) { RestoreStack(); }
+            if (node is IRArithmeticOp arOp) { GenerateArithmeticOP(arOp); }
+            if (node is IRFunctionCall call) { GenerateFunctionCall(call); }
+            if (node is IRDestroyTemp dtp) { GenerateDestroyTemp(dtp); }
         }
 
         public static string GetLocation(Variable var)
@@ -240,6 +283,18 @@ namespace ils
             else if(var is NamedVariable namedVar)
             {
                 return $"[{_dataSection[namedVar.variableName].name}]";
+            }
+            else if(var is LocalVariable local)
+            {
+                if (_usedRegs.TryGetValue(local.variableName, out string val))
+                {
+                    return val;
+                }
+                else
+                {
+                    GenerateTempVariable(local);
+                    return _usedRegs[local.variableName];
+                }
             }
 
             return var.value;
