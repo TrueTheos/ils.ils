@@ -127,11 +127,11 @@ namespace ils
 
                             if(var is TempVariable tempVar)
                             {
-                                _IR.Add(new IRAssign(newVar.variableName, tempVar.variableName, tempVar.variableType));
+                                _IR.Add(new IRAssign(newVar, tempVar.variableName, tempVar.variableType));
                             }
                             if(var is NamedVariable namedVar)
                             {
-                                _IR.Add(new IRAssign(newVar.variableName, namedVar.variableName, namedVar.variableType));
+                                _IR.Add(new IRAssign(newVar, namedVar.variableName, namedVar.variableType));
                             }
                             if (var is LiteralVariable literalVar)
                             {
@@ -146,25 +146,27 @@ namespace ils
                 }
                 else if(statement is ASTAssign assign)
                 {
+                    Variable asnVar = _currentScope.allVariables[assign.identifier.value];
+
                     if (assign.value is ASTIdentifier identifier)
                     {
-                        _IR.Add(new IRAssign(assign.identifier.value, identifier.name, VariableType.IDENTIFIER));
+                        _IR.Add(new IRAssign(asnVar, identifier.name, VariableType.IDENTIFIER));
                     }
                     else if (assign.value is ASTIntLiteral intLiteral)
                     {
-                        _IR.Add(new IRAssign(assign.identifier.value, intLiteral.value.ToString(), VariableType.INT));
+                        _IR.Add(new IRAssign(asnVar, intLiteral.value.ToString(), VariableType.INT));
                     }
                     else if (assign.value is ASTStringLiteral strLiteral)
                     {
-                        _IR.Add(new IRAssign(assign.identifier.value, strLiteral.value, VariableType.STRING));
+                        _IR.Add(new IRAssign(asnVar, strLiteral.value, VariableType.STRING));
                     }
                     else if (assign.value is ASTCharLiteral charLiteral)
                     {
-                        _IR.Add(new IRAssign(assign.identifier.value, charLiteral.value.ToString(), VariableType.CHAR));
+                        _IR.Add(new IRAssign(asnVar, charLiteral.value.ToString(), VariableType.CHAR));
                     }
                     else if (assign.value is ASTBoolLiteral boolLiteral)
                     {
-                        _IR.Add(new IRAssign(assign.identifier.value, boolLiteral.value.ToString(), VariableType.BOOL));
+                        _IR.Add(new IRAssign(asnVar, boolLiteral.value.ToString(), VariableType.BOOL));
                     }
                     else
                     {
@@ -173,15 +175,15 @@ namespace ils
 
                         if (var is TempVariable tempVar)
                         {
-                            _IR.Add(new IRAssign(saveLocation.variableName, tempVar.variableName, tempVar.variableType));
+                            _IR.Add(new IRAssign(saveLocation, tempVar.variableName, VariableType.IDENTIFIER));
                         }
                         if (var is NamedVariable namedVar)
                         {
-                            _IR.Add(new IRAssign(saveLocation.variableName, namedVar.variableName, namedVar.variableType));
+                            _IR.Add(new IRAssign(saveLocation, namedVar.variableName, VariableType.IDENTIFIER));
                         }
                         if (var is LiteralVariable literalVar)
                         {
-                            _IR.Add(new IRAssign(saveLocation.variableName, literalVar.value.ToString(), literalVar.variableType));
+                            _IR.Add(new IRAssign(saveLocation, literalVar.value.ToString(), literalVar.variableType));
                         }
                     }
                 }
@@ -237,12 +239,14 @@ namespace ils
             _IR.Add(irfunc);
             _functions.Add(identifier, irfunc);
 
-            foreach (var parameter in irfunc.parameters)
+            /*foreach (var parameter in irfunc.parameters)
             {
                 _IR.Add(parameter);
-            }
+            }*/
 
+            _IR.Add(new IRNewStack());
             ParseScope(func.scope, _currentScope, ScopeType.FUNCTION);
+            _IR.Add(new IRRestoreStack());
         }
 
         private void ParseFunctionCall(ASTFunctionCall call)
@@ -266,11 +270,11 @@ namespace ils
 
                 if (arg is TempVariable tmpVar)
                 {
-                    _IR.Add(new IRAssign(tempVar.variableName, tempVar.variableName, tempVar.variableType));
+                    _IR.Add(new IRAssign(tempVar, tempVar.variableName, VariableType.IDENTIFIER));
                 }
                 if (arg is NamedVariable namedVar)
                 {
-                    _IR.Add(new IRAssign(tempVar.variableName, namedVar.variableName, namedVar.variableType));
+                    _IR.Add(new IRAssign(tempVar, namedVar.variableName, VariableType.IDENTIFIER));
                 }
                 if (arg is LiteralVariable literalVar)
                 {
@@ -367,15 +371,15 @@ namespace ils
 
             if (var is TempVariable tempVar)
             {
-                _IR.Add(new IRAssign(saveLocation.variableName, tempVar.variableName, tempVar.variableType));
+                _IR.Add(new IRAssign(saveLocation, tempVar.variableName, tempVar.variableType));
             }
             if (var is NamedVariable namedVar)
             {
-                _IR.Add(new IRAssign(saveLocation.variableName, namedVar.variableName, namedVar.variableType));
+                _IR.Add(new IRAssign(saveLocation, namedVar.variableName, namedVar.variableType));
             }
             if (var is LiteralVariable literalVar)
             {
-                _IR.Add(new IRAssign(saveLocation.variableName, literalVar.value.ToString(), literalVar.variableType));
+                _IR.Add(new IRAssign(saveLocation, literalVar.value.ToString(), literalVar.variableType));
             }
 
             if (cond.rightNode != null)
@@ -385,15 +389,15 @@ namespace ils
 
                 if (rightNode is TempVariable tempVarr)
                 {
-                    _IR.Add(new IRAssign(rightNodeName, tempVarr.variableName, tempVarr.variableType));
+                    _IR.Add(new IRAssign(rightNode, tempVarr.variableName, tempVarr.variableType));
                 }
                 if (rightNode is NamedVariable namedVarr)
                 {
-                    _IR.Add(new IRAssign(rightNodeName, namedVarr.variableName, namedVarr.variableType));
+                    _IR.Add(new IRAssign(rightNode, namedVarr.variableName, namedVarr.variableType));
                 }
                 if (rightNode is LiteralVariable literalVarr)
                 {
-                    _IR.Add(new IRAssign(rightNodeName, literalVarr.value.ToString(), literalVarr.variableType));
+                    _IR.Add(new IRAssign(rightNode, literalVarr.value.ToString(), literalVarr.variableType));
                 }
 
                 _IR.Add(new IRCondition(result, _tempVariables[leftNodeName], cond.conditionType, _tempVariables[rightNodeName]));
@@ -469,41 +473,64 @@ namespace ils
             }          
             else if (_expression is ASTArithmeticOperation arithmeticOp)
             {
-                string tempVarName = CreateNewTempVar(VariableType.INT, "0");
-                TempVariable tempVar = _tempVariables[tempVarName];
-               
+                /*
+                  string tempVarName = CreateNewTempVar(VariableType.INT, "0");
+                    TempVariable tempVar = _tempVariables[tempVarName];
+                 */
+
                 Variable leftVar = ParseExpression(arithmeticOp.leftNode);
+
+                string tempVarName = "";
+                TempVariable tempVar = null;
 
                 if (leftVar is TempVariable _tempVar)
                 {
-                    _IR.Add(new IRAssign(tempVar.variableName, _tempVar.variableName, _tempVar.variableType));
+                    tempVarName = CreateNewTempVar(VariableType.INT, "0");
+                    tempVar = _tempVariables[tempVarName];
+                    _IR.Add(new IRAssign(tempVar, _tempVar.variableName, VariableType.IDENTIFIER));
                 }
                 if (leftVar is NamedVariable namedVar)
                 {
-                    _IR.Add(new IRAssign(tempVar.variableName, namedVar.variableName, namedVar.variableType));
+                    tempVarName = CreateNewTempVar(VariableType.INT, "0");
+                    tempVar = _tempVariables[tempVarName];
+                    _IR.Add(new IRAssign(tempVar, namedVar.variableName, VariableType.IDENTIFIER));
                 }
                 if (leftVar is LiteralVariable literalVar)
                 {
-                    _IR.Add(new IRAssign(tempVar.variableName, literalVar.value.ToString(), literalVar.variableType));
+                    //_IR.Add(new IRAssign(tempVar.variableName, literalVar.value.ToString(), literalVar.variableType));
+                    //tempVar.SetValue(literalVar.value.ToString());
                 }
 
+                /*
                 tempVarName = CreateNewTempVar(VariableType.INT, "0");
                 tempVar = _tempVariables[tempVarName];
+                */
 
                 Variable rightVar = ParseExpression(arithmeticOp.rightNode);
 
                 if (rightVar is TempVariable _tempVarr)
                 {
-                    _IR.Add(new IRAssign(tempVar.variableName, _tempVarr.variableName, _tempVarr.variableType));
+                    tempVarName = CreateNewTempVar(VariableType.INT, "0");
+                    tempVar = _tempVariables[tempVarName];
+                    _IR.Add(new IRAssign(tempVar, _tempVarr.variableName, _tempVarr.variableType));
                 }
                 if (rightVar is NamedVariable namedVarr)
                 {
-                    _IR.Add(new IRAssign(tempVar.variableName, namedVarr.variableName, namedVarr.variableType));
+                    tempVarName = CreateNewTempVar(VariableType.INT, "0");
+                    tempVar = _tempVariables[tempVarName];
+                    _IR.Add(new IRAssign(tempVar, namedVarr.variableName, namedVarr.variableType));
                 }
                 if (rightVar is LiteralVariable literalVarr)
                 {
-                    _IR.Add(new IRAssign(tempVar.variableName, literalVarr.value.ToString(), literalVarr.variableType));
+                    //_IR.Add(new IRAssign(tempVar.variableName, literalVarr.value.ToString(), literalVarr.variableType));
+                    //tempVar.SetValue(literalVarr.value.ToString());
                 }
+
+                /*tempVarName = CreateNewTempVar(VariableType.INT, "0");
+                tempVar = _tempVariables[tempVarName];*/
+
+                tempVarName = CreateNewTempVar(VariableType.INT, "0");
+                tempVar = _tempVariables[tempVarName];
 
                 switch (arithmeticOp.operation)
                 {
@@ -526,6 +553,32 @@ namespace ils
             }
 
             return null;
+        }
+
+        public class IRNewStack : IRNode
+        {
+            public IRNewStack()
+            {
+                Name = "NST";
+            }
+
+            public override string GetString()
+            {
+                return $"({Name})";
+            }
+        }
+
+        public class IRRestoreStack : IRNode
+        {
+            public IRRestoreStack()
+            {
+                Name = "RST";
+            }
+
+            public override string GetString()
+            {
+                return $"({Name})";
+            }
         }
 
         public class IRCondition : IRNode
@@ -591,20 +644,20 @@ namespace ils
         public class IRFunctionCall : IRNode
         {
             public string name;
-            public List<Variable> parameters = new();
+            public List<Variable> arguments = new();
 
-            public IRFunctionCall(string name, List<Variable> parameters)
+            public IRFunctionCall(string name, List<Variable> arguments)
             {
                 Name = "CALL";
 
                 this.name = name;
-                this.parameters = parameters;
+                this.arguments = arguments;
             }
 
             public override string GetString()
             {
                 string r = $"(CALL";
-                foreach (var parameter in parameters)
+                foreach (var parameter in arguments)
                 {
                     r += $", {parameter.variableName}";
                 }
@@ -778,11 +831,11 @@ namespace ils
 
         public class IRAssign : IRNode
         {
-            public string identifier;
+            public Variable identifier;
             public VariableType assignedType;
             public string value;
 
-            public IRAssign(string identifier, string value, VariableType assignedType)
+            public IRAssign(Variable identifier, string value, VariableType assignedType)
             {
                 Name = "ASN";
 
@@ -793,7 +846,7 @@ namespace ils
 
             public override string GetString()
             {
-                return $"({Name}, {identifier} = {value})";
+                return $"({Name}, {identifier.variableName} = {value})";
             }
         }
 

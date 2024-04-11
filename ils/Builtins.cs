@@ -11,7 +11,8 @@ namespace ils
     {
         public static List<BuiltinFunction> BuiltinFunctions = new()
         {
-            new PrintFunc()
+            new PrintFunc(),
+            new ExitFunc()
         };
 
         public abstract class BuiltinFunction
@@ -35,7 +36,7 @@ namespace ils
                 libcName = _libcName; 
             }
 
-            public abstract List<string> GenerateASM(List<Variable> args);
+            public abstract void GenerateASM(List<Variable> args);
 
             public void Generate(List<Variable> args)
             {
@@ -43,6 +44,46 @@ namespace ils
                 {
                     ErrorHandler.Custom($"Function '{name}' takes {arguments} arguments!");
                 }
+                else
+                {
+                    GenerateASM(args);
+                }
+            }
+        }
+
+        public class ExitFunc : LibcFunction
+        {
+            public ExitFunc() : base
+                (
+                    "exit",
+                    [null],
+                    ""
+                )
+            { }
+
+            public override void GenerateASM(List<Variable> arguments)
+            {
+                Variable arg = arguments[0];
+
+                switch(arg.variableType)
+                {
+                    case VariableType.INT: break;
+                    default: ErrorHandler.Custom($"Function '{name}' rquires int as argument!"); break;
+                }
+
+                ASMGenerator.AddAsm("mov rax, 60");
+
+                if (arg is LiteralVariable lit)
+                {
+                    ASMGenerator.AddAsm($"mov rdi, {arg.value}");
+                }
+                else
+                {
+                    ASMGenerator.AddAsm($"mov rdi, {ASMGenerator.GetLocation(arg)}");
+                }
+
+
+                ASMGenerator.AddAsm("syscall");
             }
         }
 
@@ -56,10 +97,8 @@ namespace ils
                 )
             { }
 
-            public override List<string> GenerateASM(List<Variable> arguments)
+            public override void GenerateASM(List<Variable> arguments)
             {
-                List<string> r = new();
-
                 string format = "";
 
                 Variable msg = arguments[0];
@@ -82,18 +121,16 @@ namespace ils
 
                 if(msg is LiteralVariable literal)
                 {
-                    r.Add($"mov eax, {literal.value}");
+                    ASMGenerator.AddAsm($"mov rax, {literal.value}");
                 }
                 else
                 {
-                    r.Add($"mov eax, [{msg.variableName}]");
+                    ASMGenerator.AddAsm($"mov rax, {ASMGenerator.GetLocation(msg)}");
                 }
 
-                r.Add("push eax");
-                r.Add($"push {format}");
-                r.Add($"call {libcName}");
-
-                return r;
+                ASMGenerator.AddAsm("push rax");
+                ASMGenerator.AddAsm($"push {format}");
+                ASMGenerator.AddAsm($"call {libcName}");
             }
         }
     }

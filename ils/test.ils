@@ -2,15 +2,11 @@ number: int = 10;
 
 fun main()
 {
-	number = 1 + 1;
-	print(number);
+	number = number + 2 + 3;
+	exit(number);
 }
 
-fun xD()
-{
-}
-/*
-fun foo(a: int;) -> int
+/*fun foo(a: int;) -> int
 {
 	number = number + 2;
 	c: int = a + number;

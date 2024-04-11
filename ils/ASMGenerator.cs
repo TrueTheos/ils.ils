@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static ils.Builtins;
 using static ils.IRGenerator;
 
 namespace ils
@@ -11,38 +12,70 @@ namespace ils
     {
         private Dictionary<int, Word> _words = new()
         {
-            { 1, new Word(){ byteCount = 1, shortName = Word.ShortName.db, longName = Word.LongName.@byte, reserve = ".byte" } },
-            { 2, new Word(){ byteCount = 2, shortName = Word.ShortName.dw, longName = Word.LongName.word, reserve = ".word" } },
-            { 4, new Word(){ byteCount = 4, shortName = Word.ShortName.dd, longName = Word.LongName.dword, reserve = ".long" } },
-            { 8, new Word(){ byteCount = 8, shortName = Word.ShortName.dq, longName = Word.LongName.qword, reserve = ".quad" } }
+            { 1, new Word(){ byteCount = 1, shortName = Word.ShortName.db, longName = Word.LongName.@byte, reserve = "resb" } },
+            { 2, new Word(){ byteCount = 2, shortName = Word.ShortName.dw, longName = Word.LongName.word, reserve = "resw" } },
+            { 4, new Word(){ byteCount = 4, shortName = Word.ShortName.dd, longName = Word.LongName.dword, reserve = "resd"} },
+            { 8, new Word(){ byteCount = 8, shortName = Word.ShortName.dq, longName = Word.LongName.qword, reserve = "resq" } }
         };
 
-        private string asm = "";
+        private int _stackSize;
 
-        private Dictionary<string, ReservedVariable> dataSection = new();
+        private readonly List<string> _scratchRegs = ["rsi", "rdx", "rcx", "r8", "r9", "r10", "r11"];
+
+        public static Queue<string> _availableRegs = new();
+        public static Dictionary<string, string> _usedRegs = new();
+
+        public static string asm = "";
+
+        public static Dictionary<string, ReservedVariable> _dataSection = new();
+
+        private void Push(string v)
+        {
+            AddAsm($"push {v}");
+            _stackSize++;
+        }
+
+        private void Pop(string v)
+        {
+            AddAsm($"pop {v}");
+            _stackSize--;
+        }
+
+        private void NewStack()
+        {
+            AddAsm("push rbp");
+            AddAsm("mov rbp, rsp");
+        }
+
+        private void RestoreStack()
+        {
+            AddAsm("pop rbp");
+        }
 
         public string GenerateASM(List<IRNode> ir)
         {
+            foreach (string reg in _scratchRegs)
+            {
+                _availableRegs.Enqueue(reg);
+            }
+
             AddAsm("global main", 0);
 
-            foreach (IRNode node in ir) 
+            foreach (IRNode node in ir)
             {
                 GenerateIRNode(node);
             }
-
-            AddAsm("mov rax, 60");
-            AddAsm("mov rdi, 1");
-            AddAsm("syscall");
 
             AddAsm("section .data", 0);
             AddAsm("strFormat db \"%s\", 0");
             AddAsm("intFormat db \"%d\", 0");
             AddAsm("charFormat db \"%c\", 0");
             AddAsm("extern printf");
-            foreach (var data in dataSection)
+
+            foreach (var data in _dataSection)
             {
                 AddAsm($"{data.Value.name}:", 0);
-                AddAsm($"{data.Value.word.reserve} {data.Value.var.value}");
+                AddAsm($"{data.Value.word.shortName} {data.Value.var.value}");
             }
 
             Console.WriteLine('\n' + asm);
@@ -50,7 +83,7 @@ namespace ils
             return asm;
         }
 
-        private void AddAsm(string code, int tabsCount = 1)
+        public static void AddAsm(string code, int tabsCount = 1)
         {
             string tabs = new string('\t', tabsCount);
             asm += tabs + code + '\n';
@@ -58,7 +91,7 @@ namespace ils
 
         private bool VarExists(string name)
         {
-            return dataSection.ContainsKey(name);
+            return _dataSection.ContainsKey(name);
         }
 
         private void GenerateFunction(IRFunction func)
@@ -66,11 +99,23 @@ namespace ils
             AddAsm($"{func.name}:", 0);
         }
 
+        private void GenerateFunctionCall(IRFunctionCall func)
+        {
+            BuiltinFunction bfunc = BuiltinFunctions.FirstOrDefault(x => x.name == func.name);
+            if (bfunc != null)
+            {
+                if(bfunc is LibcFunction libc)
+                {
+                    libc.Generate(func.arguments);
+                }
+            }
+        }
+
         private void GenerateVariable(Variable var)
         {
-            if(var is NamedVariable namedVar)
+            if (var is NamedVariable namedVar)
             {
-                if(VarExists(namedVar.variableName))
+                if (VarExists(namedVar.variableName))
                 {
                     ErrorHandler.Custom($"Variable {namedVar.variableName} already exists!");
                     return;
@@ -79,33 +124,60 @@ namespace ils
                 switch (namedVar.variableType)
                 {
                     case VariableType.CHAR:
-                        dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[1],
-                            var = namedVar});
+                        _dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[1],
+                            var = namedVar });
                         break;
                     case VariableType.INT:
-                        dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[4],
-                            var = namedVar});
+                        _dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[4],
+                            var = namedVar });
                         break;
                     case VariableType.BOOL:
-                        dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[1],
-                            var = namedVar});
+                        _dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[1],
+                            var = namedVar });
                         break;
                     case VariableType.STRING:
                         //todo
                         break;
                 }
-            }           
+            }
+            if(var is TempVariable tempVar) 
+            {
+                GenerateTempVariable(tempVar);
+            }
+        }
+
+        public static void GenerateTempVariable(TempVariable temp)
+        {
+            switch (temp.variableType)
+            {
+                case VariableType.STRING:
+                    break;
+                case VariableType.INT:
+                    string reg = _availableRegs.Dequeue();
+                    _usedRegs.Add(temp.variableName, reg);
+                    AddAsm($"mov {reg}, {temp.value}");
+                    break;
+                case VariableType.CHAR:
+                    break;
+                case VariableType.BOOL:
+                    break;
+                case VariableType.IDENTIFIER:
+                    break;
+            }
         }
 
         private void GenerateAssign(IRAssign asign)
         {
+            string location = GetLocation(asign.identifier);
+            string val = "";
+
             switch (asign.assignedType)
             {
                 case VariableType.STRING:
                     //todo
                     break;
                 case VariableType.INT:
-                    AddAsm($"mov {_words[4].longName} [{asign.identifier}], {asign.value}");
+                    val = asign.value;
                     break;
                 case VariableType.CHAR:
                     AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
@@ -114,20 +186,66 @@ namespace ils
                     AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
                     break;
                 case VariableType.IDENTIFIER:
-                    AddAsm($"mov {dataSection[asign.identifier].word.longName} [{asign.identifier}], {asign.value}");
+                    if (_dataSection.TryGetValue(asign.value, out ReservedVariable var))
+                    { 
+                        val = $"[{var.var.variableName}]"; 
+                    }
+                    else val = _usedRegs[asign.value];
                     break;
+            }
+
+            AddAsm($"mov {location}, {val}");
+        }
+
+        private void GenerateArithmeticOP(IRArithmeticOp arop)
+        {
+            if(arop is IRAddOp)
+            {
+                string location = _usedRegs[arop.resultLocation.variableName];
+
+                string a = GetLocation(arop.a);
+                string b = GetLocation(arop.b);
+
+                AddAsm($"add {location}, {a}");
+                AddAsm($"add {location}, {b}");
             }
         }
 
         private void GenerateIRNode(IRNode node)
         {
-            if(node is IRLabel label) AddAsm($".{label.labelName}:");
-            if (node is Variable variable) GenerateVariable(variable);
-            if(node is IRAssign asign) GenerateAssign(asign);
-            if(node is IRFunction func) GenerateFunction(func);
+            if (node is IRLabel label) { AddAsm($".{label.labelName}:"); }
+            if (node is Variable variable) { GenerateVariable(variable); }
+            if(node is IRAssign asign) { GenerateAssign(asign); }
+            if(node is IRFunction func) { GenerateFunction(func); }
+            if (node is IRNewStack newStack) { NewStack();}
+            if (node is IRRestoreStack restoreStack) { RestoreStack();}
+            if(node is IRArithmeticOp arOp) { GenerateArithmeticOP(arOp); }
+            if(node is IRFunctionCall call) { GenerateFunctionCall(call); }
         }
 
-        private struct Word
+        public static string GetLocation(Variable var)
+        {
+            if(var is TempVariable temp)
+            {
+                if(_usedRegs.TryGetValue(temp.variableName, out string val))
+                {
+                    return val;
+                }
+                else
+                {
+                    GenerateTempVariable(temp);
+                    return _usedRegs[temp.variableName];
+                }
+            }
+            else if(var is NamedVariable namedVar)
+            {
+                return $"[{_dataSection[namedVar.variableName].name}]";
+            }
+
+            return var.value;
+        }
+
+        public struct Word
         {
             public enum ShortName { db, dw, dd, dq}
             public ShortName shortName;
@@ -137,7 +255,7 @@ namespace ils
             public int byteCount;
         }
 
-        private struct ReservedVariable
+        public struct ReservedVariable
         {
             public string name;
             public Word word;
