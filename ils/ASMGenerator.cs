@@ -119,7 +119,9 @@ namespace ils
             }
             else
             {
-                foreach (var argument in func.arguments)
+                List<Variable> args = func.arguments;
+                args.Reverse();
+                foreach (var argument in args)
                 {
                     AddAsm($"push {GetLocation(argument)}");
                 }
@@ -162,8 +164,33 @@ namespace ils
             }
             if(var is LocalVariable localVar)
             {
-                GenerateTempVariable(localVar);
+                if(localVar.isFuncArg)
+                {
+                    GenerateStackVar(localVar);
+
+                }
+                else
+                {
+                    GenerateTempVariable(localVar);
+                }
+                
             }
+        }
+
+        public static int stackVars = 1;
+
+        public static Dictionary<string, StackVar> stackvars = new();
+
+        public static void GenerateStackVar(LocalVariable arg)
+        {
+            stackvars.Add(arg.variableName, new StackVar() { offset = stackVars, var = arg });
+            stackVars++;
+        }
+
+        public struct StackVar
+        {
+            public int offset;
+            public Variable var;
         }
 
         public static void GenerateTempVariable(Variable var)
@@ -273,11 +300,6 @@ namespace ils
             _usedRegs.Remove(dtp.temp);
         }
 
-        private void GenerateCondition(IRCondition condition) 
-        {
-            
-        }
-
         private void GenerateCompare(IRCompare compare)
         {
             string sizeA = "";
@@ -377,7 +399,7 @@ namespace ils
             if (node is IRArithmeticOp arOp) { GenerateArithmeticOP(arOp); }
             if (node is IRFunctionCall call) { GenerateFunctionCall(call); }
             if (node is IRDestroyTemp dtp) { GenerateDestroyTemp(dtp); }
-            if (node is IRCondition cond) { GenerateCondition(cond); }
+            //if (node is IRCondition cond) { GenerateCondition(cond); }
             if(node is IRCompare comp) { GenerateCompare(comp); }
             if(node is IRJump jump) { GenerateJump(jump); }
             if(node is IRReturn ret) { GenerateReturn(ret); }
@@ -403,6 +425,18 @@ namespace ils
             }
             else if(var is LocalVariable local)
             {
+                if(local.isFuncArg)
+                {
+                    if(stackvars.TryGetValue(local.variableName, out StackVar stackVar))
+                    {
+                        return $"[rsp+{8 + stackvars[local.variableName].offset * 8}]";
+                    }
+                    else
+                    {
+                        GenerateStackVar(local);
+                        return $"[rsp+{8 + stackvars[local.variableName].offset * 8}]";
+                    }
+                }
                 if (_usedRegs.TryGetValue(local.variableName, out string val))
                 {
                     return val;

@@ -96,7 +96,7 @@ namespace ils
                     List<LocalVariable> parameters = new();
                     foreach (var parameter in func.parameters)
                     {
-                        LocalVariable par = new LocalVariable(parameter);
+                        LocalVariable par = new LocalVariable(parameter, true);
                         parameters.Add(par);
                         _currentScope.AddLocalVariable(par);
                         //add using arguments
@@ -252,7 +252,7 @@ namespace ils
                     case ScopeType.FUNCTION:
                     case ScopeType.LOOP:
                     case ScopeType.IF:
-                        newVar = new LocalVariable(vardec);
+                        newVar = new LocalVariable(vardec, false);
                         break;
                     case ScopeType.DEFAULT:
                         newVar = new NamedVariable(vardec);
@@ -463,12 +463,12 @@ namespace ils
                     _tempVariables[rightNodeDestination].SetValue(r_literalVar.value, r_literalVar.variableType);
                 }
 
-                _IR.Add(new IRCondition(result, _tempVariables[leftNodeDestinationName], cond.conditionType, _tempVariables[rightNodeDestination]));
+                //_IR.Add(new IRCondition(result, _tempVariables[leftNodeDestinationName], cond.conditionType, _tempVariables[rightNodeDestination]));
             }
             else
             {
                 rightNodeEvalResult = new LiteralVariable("1", VariableType.INT);
-                _IR.Add(new IRCondition(result, _tempVariables[leftNodeDestinationName], ConditionType.EQUAL, rightNodeEvalResult));
+                //_IR.Add(new IRCondition(result, _tempVariables[leftNodeDestinationName], ConditionType.EQUAL, rightNodeEvalResult));
             }
 
             return new IRCompare(leftNodeEvalResult, rightNodeEvalResult);
@@ -646,7 +646,7 @@ namespace ils
             }
         }
 
-        public class IRCondition : IRNode
+        /*public class IRCondition : IRNode
         {
             public Variable resultVariable;
 
@@ -667,7 +667,7 @@ namespace ils
             {
                 return $"({Name}, {leftNode.variableName}, {conditionType}, {rightNode.variableName}, {resultVariable.variableName})";
             }
-        }
+        }*/
 
         public class IRFunction : IRNode
         {
@@ -836,6 +836,7 @@ namespace ils
             {
                 Name = "REG";
                 this.reg = reg;
+                this.variableName = reg;
                 this.variableType = varType;
                 SetValue(reg, variableType);
             }
@@ -849,11 +850,15 @@ namespace ils
 
         public class LocalVariable : Variable
         {
-            public LocalVariable(ASTVariableDeclaration declaration)
+            public bool isFuncArg = false;
+
+            public LocalVariable(ASTVariableDeclaration declaration, bool isFuncArg)
             {
                 Name = "LOCAL";
 
                 this.variableName = declaration.name.value;
+
+                this.isFuncArg = isFuncArg;
 
                 switch (declaration.type)
                 {

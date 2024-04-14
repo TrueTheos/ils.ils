@@ -2,16 +2,13 @@ number: int = 0;
 
 fun main() -> int
 {
-	if(xd())
-	{	
-		println(1);
-	}
+	println(div(12;5;));
 	return 0;
 }
 
-fun xd() -> bool
+fun div(a: int; b: int;) -> int
 {
-	return false;
+	return a / b;
 }
 
 
