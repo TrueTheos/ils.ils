@@ -319,7 +319,6 @@ namespace ils
                 string temp = CreateNewTempVar(arg.variableType, "0");
                 TempVariable tempVar = _tempVariables[temp];
 
-                tempVar.SetValue(arg.value, arg.variableType);
 
                 if (arg is TempVariable tmpVar)
                 {
@@ -806,13 +805,18 @@ namespace ils
             {
                 this.variableType = valType;
 
+
                 switch (this.variableType)
                 {
                     case VariableType.STRING:
                         this.value = $"\"{val}\"";
                         break;
                     case VariableType.INT:
+                        this.value = val;
+                        break;
                     case VariableType.CHAR:
+                        this.value = val;
+                        break;
                     case VariableType.BOOL:
                         this.value = val;
                         break;

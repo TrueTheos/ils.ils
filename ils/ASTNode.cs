@@ -107,7 +107,7 @@ namespace ils
 
     public class ASTCharLiteral : ASTLiteral
     {
-        public ASTCharLiteral(string value) { this.value = value; variableType = VariableType.CHAR; }
+        public ASTCharLiteral(string value) { this.value = ((int)value[0]).ToString(); variableType = VariableType.CHAR; }
     }
 
     public class ASTBoolLiteral : ASTLiteral
