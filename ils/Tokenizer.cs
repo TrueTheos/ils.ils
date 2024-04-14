@@ -133,7 +133,7 @@ namespace ils
                         }
                         else
                         {
-                            ErrorHandler.Expected("char", lineCount);
+                            ErrorHandler.Expected("char", null);
                         }
                     }
                     else
@@ -200,6 +200,18 @@ namespace ils
                     Consume();
                     _tokens.Add(new(TokenType.NOT_EQUAL, lineCount, buffer));
                 }
+                else if (Expect(">="))
+                {
+                    Consume();
+                    Consume();
+                    _tokens.Add(new(TokenType.GREATER_EQUAL, lineCount, buffer));
+                }
+                else if (Expect("<="))
+                {
+                    Consume();
+                    Consume();
+                    _tokens.Add(new(TokenType.LESS_EQUAL, lineCount, buffer));
+                }
                 else if (Expect(","))
                 {
                     Consume();
@@ -214,24 +226,12 @@ namespace ils
                 {
                     Consume();
                     _tokens.Add(new(TokenType.GREATER, lineCount, buffer));
-                }
-                else if (Expect(">="))
-                {
-                    Consume();
-                    Consume();
-                    _tokens.Add(new(TokenType.GREATER_EQUAL, lineCount, buffer));
-                }
+                }              
                 else if (Expect("<"))
                 {
                     Consume();
                     _tokens.Add(new(TokenType.LESS, lineCount, buffer));
-                }
-                else if (Expect("<="))
-                {
-                    Consume();
-                    Consume();
-                    _tokens.Add(new(TokenType.LESS_EQUAL, lineCount, buffer));
-                }
+                }             
                 else if (Expect("="))
                 {
                     Consume();

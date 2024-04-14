@@ -18,9 +18,9 @@ namespace ils
             Log(message);
         }
 
-        public static void Expected(string message, int line) 
+        public static void Expected(string message, Token token) 
         {
-            Log($"[{line}] Expected '{message}'!");
+            Log($"[{token.line}] Expected '{message}' but received {token.tokenType}!");
         }
     }
 }

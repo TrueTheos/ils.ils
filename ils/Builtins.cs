@@ -71,15 +71,15 @@ namespace ils
                     default: ErrorHandler.Custom($"Function '{name}' rquires int as argument!"); break;
                 }
 
-                ASMGenerator.AddAsm("mov rax, 60");
+                ASMGenerator.Mov("rax", "60");
 
                 if (arg is LiteralVariable lit)
                 {
-                    ASMGenerator.AddAsm($"mov rdi, {arg.value}");
+                    ASMGenerator.Mov("rdi", arg.value);
                 }
                 else
                 {
-                    ASMGenerator.AddAsm($"mov rdi, {ASMGenerator.GetLocation(arg)}");
+                    ASMGenerator.Mov("rdi", ASMGenerator.GetLocation(arg));
                 }
 
 
@@ -91,7 +91,7 @@ namespace ils
         {
             public PrintFunc() : base
                 (
-                    "print",
+                    "println",
                     [null],
                     "printf"
                 )
@@ -119,17 +119,12 @@ namespace ils
                         break;
                 }
 
-                if(msg is LiteralVariable literal)
-                {
-                    ASMGenerator.AddAsm($"mov rax, {literal.value}");
-                }
-                else
-                {
-                    ASMGenerator.AddAsm($"mov rax, {ASMGenerator.GetLocation(msg)}");
-                }
+                ASMGenerator.Mov("rdi", format);
 
-                ASMGenerator.AddAsm("push rax");
-                ASMGenerator.AddAsm($"push {format}");
+                ASMGenerator.Mov("rsi", ASMGenerator.GetLocation(msg));
+
+                ASMGenerator.Mov("rax", "0");
+
                 ASMGenerator.AddAsm($"call {libcName}");
             }
         }

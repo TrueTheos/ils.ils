@@ -27,7 +27,7 @@
                 }
                 else
                 {
-                    ErrorHandler.Expected("statement", Peek().line);
+                    ErrorHandler.Expected("statement", Peek());
                     return null;
                 }
             }
@@ -44,9 +44,19 @@
             {
                 return new ASTIntLiteral(intLiteral.value);
             }
-            if (TryConsume(TokenType.IDENTIFIER) is Token identifier && identifier != null)
+            if (Expect(TokenType.IDENTIFIER))
             {
-                return new ASTIdentifier(identifier);
+                //todo add function call
+                if (Expect(TokenType.OPEN_PARENTHESIS, 1))
+                {
+                    ASTFunctionCall funcCall = ParseFunctionCall();
+                    if (funcCall != null)
+                    {
+                        return funcCall;
+                    }
+                }
+
+                return new ASTIdentifier(Consume());
             }
             if (TryConsume(TokenType.QUOTATION) != null)
             {
@@ -83,7 +93,7 @@
                 ASTExpression expr = ParseExpression();
                 if (expr == null)
                 {
-                    ErrorHandler.Expected("expression", Peek().line);
+                    ErrorHandler.Expected("expression", Peek());
                     return null;
                 }
                 TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
@@ -137,7 +147,7 @@
 
                 if (rightNode == null)
                 {
-                    ErrorHandler.Expected("expression", nextToken.line);
+                    ErrorHandler.Expected("expression", nextToken);
                     return null;
                 }
 
@@ -181,7 +191,7 @@
 
             if (leftNode == null)
             {
-                ErrorHandler.Expected("condition", Peek().line);
+                ErrorHandler.Expected("condition", Peek());
                 return null;
             }
 
@@ -196,7 +206,7 @@
 
                 if (rightNode == null)
                 {
-                    ErrorHandler.Expected("condition", Peek().line);
+                    ErrorHandler.Expected("condition", Peek());
                     return null;
                 }
 
@@ -220,7 +230,7 @@
 
                 if (cond == null)
                 {
-                    ErrorHandler.Expected("condition", Peek().line);
+                    ErrorHandler.Expected("condition", Peek());
                     return null;
                 }
 
@@ -228,7 +238,7 @@
 
                 if (scope == null)
                 {
-                    ErrorHandler.Expected("scope", Peek().line);
+                    ErrorHandler.Expected("scope", Peek());
                     return null;
                 }
 
@@ -242,7 +252,7 @@
 
                 if (scope == null)
                 {
-                    ErrorHandler.Expected("scope", Peek().line);
+                    ErrorHandler.Expected("scope", Peek());
                     return null;
                 }
 
@@ -279,7 +289,7 @@
                     case TokenType.TYPE_INT:
                         break;
                     default:
-                        ErrorHandler.Expected("return type", variableType.line);
+                        ErrorHandler.Expected("return type", variableType);
                         break;
                 }
             }
@@ -303,7 +313,7 @@
                 case TokenType.TYPE_INT:
                     break;
                 default:
-                    ErrorHandler.Expected("variable type", variableType.line);
+                    ErrorHandler.Expected("variable type", variableType);
                     break;
             }
 
@@ -318,28 +328,28 @@
                     {
                         if (variableType.tokenType != TokenType.TYPE_CHAR)
                         {
-                            ErrorHandler.Expected("char", variableType.line);
+                            ErrorHandler.Expected("char", variableType);
                         }
                     }
                     else if (expr is ASTBoolLiteral)
                     {
                         if (variableType.tokenType != TokenType.TYPE_BOOLEAN)
                         {
-                            ErrorHandler.Expected("bool", variableType.line);
+                            ErrorHandler.Expected("bool", variableType);
                         }
                     }
                     else if (expr is ASTIntLiteral)
                     {
                         if (variableType.tokenType != TokenType.TYPE_INT)
                         {
-                            ErrorHandler.Expected("int ", variableType.line);
+                            ErrorHandler.Expected("int ", variableType);
                         }
                     }
                     else if (expr is ASTStringLiteral)
                     {
                         if (variableType.tokenType != TokenType.TYPE_STRING)
                         {
-                            ErrorHandler.Expected("string ", variableType.line);
+                            ErrorHandler.Expected("string ", variableType);
                         }
                     }
 
@@ -347,7 +357,7 @@
                 }
                 else
                 {
-                    ErrorHandler.Expected("value", variableType.line);
+                    ErrorHandler.Expected("value", variableType);
                 }
 
                 TryConsumeErr(TokenType.SEMICOLON);
@@ -364,6 +374,11 @@
         private ASTFunctionCall ParseFunctionCall()
         {
             Token identifier = Consume();
+            if(identifier.tokenType != TokenType.IDENTIFIER)
+            {
+                ErrorHandler.Expected("identifier", identifier);
+                return null;
+            }
             Consume();
 
             List<ASTExpression> arguments = new();
@@ -407,7 +422,7 @@
 
                     if (expr == null)
                     {
-                        ErrorHandler.Expected("expression", Peek().line);
+                        ErrorHandler.Expected("expression", Peek());
                         return null;
                     }
 
@@ -430,7 +445,7 @@
 
                 if (scope == null)
                 {
-                    ErrorHandler.Expected("scope", Peek().line);
+                    ErrorHandler.Expected("scope", Peek());
                     return null;
                 }
 
@@ -448,7 +463,7 @@
 
                 if (cond == null)
                 {
-                    ErrorHandler.Expected("condition", Peek().line);
+                    ErrorHandler.Expected("condition", Peek());
                     return null;
                 }
 
@@ -456,7 +471,7 @@
 
                 if (scope == null)
                 {
-                    ErrorHandler.Expected("scope", Peek().line);
+                    ErrorHandler.Expected("scope", Peek());
                     return null;
                 }
 
@@ -470,7 +485,7 @@
 
                 if (ret == null)
                 {
-                    ErrorHandler.Expected("expression", Peek().line);
+                    ErrorHandler.Expected("expression", Peek());
                     return null;
                 }
 
@@ -485,7 +500,7 @@
 
                 if (cond == null)
                 {
-                    ErrorHandler.Expected("condition", Peek().line);
+                    ErrorHandler.Expected("condition", Peek());
                     return null;
                 }
 
@@ -493,7 +508,7 @@
 
                 if (scope == null)
                 {
-                    ErrorHandler.Expected("scope", Peek().line);
+                    ErrorHandler.Expected("scope", Peek());
                     return null;
                 }
 
@@ -555,7 +570,7 @@
             {
                 return Consume();
             }
-            ErrorHandler.Expected(type.ToString(), Peek(-1).line);
+            ErrorHandler.Expected(type.ToString(), Peek(-1));
             return null;
         }
 

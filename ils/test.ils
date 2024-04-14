@@ -1,16 +1,41 @@
-number: int;
+number: int = 0;
 
-fun main()
+fun main() -> int
 {
-	number = 10 / 2;
-	z: int = number;
-	number = z + number * 2;
-	exit(number);
+	if(xd())
+	{	
+		println(1);
+	}
+	return 0;
 }
 
-/*fun foo(a: int;) -> int
+fun xd() -> bool
 {
-	number = number + 2;
-	c: int = a + number;
-	return c;
-}*/
+	return false;
+}
+
+
+/*
+
+number: int = 0;
+
+fun main() -> int
+{
+	while(number <= 10)
+	{
+		println(number);
+		number = number + 1;
+	}
+	
+	om: int = add(1;2;);
+	println(om);
+
+	return number;
+}
+
+fun add(a: int; b: int;) -> int
+{
+	return a + b;
+}
+
+*/

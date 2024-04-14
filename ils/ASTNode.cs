@@ -1,8 +1,10 @@
-﻿using System;
+﻿using Microsoft.VisualBasic;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static ils.IRGenerator;
 
 namespace ils
 {
@@ -87,24 +89,30 @@ namespace ils
         public string name = token.value;
     }
 
-    public class ASTIntLiteral(string value) : ASTExpression 
+    public abstract class ASTLiteral : ASTExpression
     {
-        public int value = Int32.Parse(value);
+        public string value;
+        public VariableType variableType;
     }
 
-    public class ASTStringLiteral(string value) : ASTExpression
+    public class ASTIntLiteral : ASTLiteral
     {
-        public string value = value;//value.Select(c => int.Parse(c.ToString())).ToArray();
+        public ASTIntLiteral(string value) { this.value = value; variableType = VariableType.INT; }
     }
 
-    public class ASTCharLiteral(string value) : ASTExpression
+    public class ASTStringLiteral : ASTLiteral
     {
-        public char value = value[0];
+        public ASTStringLiteral(string value) { this.value = value; variableType = VariableType.STRING; }
     }
 
-    public class ASTBoolLiteral(string value) : ASTExpression
+    public class ASTCharLiteral : ASTLiteral
     {
-        public int value = value == "true" ? 1 : 0;
+        public ASTCharLiteral(string value) { this.value = value; variableType = VariableType.CHAR; }
+    }
+
+    public class ASTBoolLiteral : ASTLiteral
+    {
+        public ASTBoolLiteral(string value) { this.value = value == "true" ? "1" : "0"; variableType = VariableType.BOOL; }
     }
 
     public class ASTArithmeticOperation : ASTExpression
@@ -170,7 +178,7 @@ namespace ils
     public class ASTCondition : ASTStatement
     {
         public ASTExpression leftNode;
-        public enum ConditionType { EQUAL, NOT_EQUAL, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL }
+        public enum ConditionType { EQUAL, NOT_EQUAL, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, NONE }
         public ConditionType conditionType;
 
         public ASTExpression rightNode;
