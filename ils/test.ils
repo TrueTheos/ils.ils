@@ -2,11 +2,11 @@ number: int = 0;
 
 fun main() -> int
 {
-	println(div(12;5;));
+	println(div(12,5));
 	return 0;
 }
 
-fun div(a: int; b: int;) -> int
+fun div(a: int, b: int) -> int
 {
 	return a / b;
 }

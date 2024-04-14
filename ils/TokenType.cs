@@ -15,7 +15,7 @@ namespace ils
         COLON, // :
         QUOTATION, // "
         SINGLE_QUATATION, // '
-        COMMA,
+        COMMA, // ,
 
         PLUS, // +
         MINUS, // -

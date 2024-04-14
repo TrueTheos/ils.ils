@@ -272,7 +272,7 @@
 
             while (Expect(TokenType.IDENTIFIER))
             {
-                parameters.Add(ParseVariableDeclaration());
+                parameters.Add(ParseVariableDeclaration(isFuncArg: true));
             }
 
             TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
@@ -299,7 +299,7 @@
             return new ASTFunction(identifier, parameters, variableType, scope, variableType != null ? scope.GetStatementsOfType<ASTReturn>().Last() : null);
         }
 
-        private ASTVariableDeclaration ParseVariableDeclaration()
+        private ASTVariableDeclaration ParseVariableDeclaration(bool isFuncArg = false)
         {
             Token identifier = Consume();
             Consume();
@@ -360,11 +360,31 @@
                     ErrorHandler.Expected("value", variableType);
                 }
 
-                TryConsumeErr(TokenType.SEMICOLON);
+                if (isFuncArg)
+                {
+                    if (Expect(TokenType.IDENTIFIER, 1))
+                    {
+                        TryConsumeErr(TokenType.COMMA);
+                    }
+                }
+                else
+                {
+                    TryConsumeErr(TokenType.SEMICOLON);
+                }
             }
             else
             {
-                TryConsumeErr(TokenType.SEMICOLON);
+                if (isFuncArg)
+                {
+                    if(Expect(TokenType.IDENTIFIER, 1))
+                    {
+                        TryConsumeErr(TokenType.COMMA);
+                    }                
+                }
+                else
+                {
+                    TryConsumeErr(TokenType.SEMICOLON);
+                }
             }
 
             variables.Add((identifier.value, identifier.line));
@@ -389,7 +409,7 @@
             {
                 arguments.Add(expr);
 
-                if (TryConsume(TokenType.SEMICOLON) != null)
+                if (TryConsume(TokenType.COMMA) != null)
                 {
                     expr = ParseExpression();
                 }
@@ -561,7 +581,10 @@
 
         private bool Expect(TokenType type, int offset = 0)
         {
-            return CanPeek() && Peek(offset).tokenType == type;
+            Token p = Peek(offset);
+            bool r = p.tokenType == type;
+            bool c = CanPeek();
+            return c && r;
         }
 
         private Token TryConsumeErr(TokenType type)
