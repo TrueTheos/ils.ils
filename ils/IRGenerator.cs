@@ -645,29 +645,6 @@ namespace ils
             }
         }
 
-        /*public class IRCondition : IRNode
-        {
-            public Variable resultVariable;
-
-            public Variable leftNode;
-            public ConditionType conditionType;
-            public Variable rightNode;
-
-            public IRCondition(Variable resultVariable, Variable leftNode, ConditionType conditionType, Variable rightNode)
-            {
-                Name = "COND";
-                this.resultVariable = resultVariable;
-                this.leftNode = leftNode;
-                this.conditionType = conditionType;
-                this.rightNode = rightNode;
-            }
-
-            public override string GetString()
-            {
-                return $"({Name}, {leftNode.variableName}, {conditionType}, {rightNode.variableName}, {resultVariable.variableName})";
-            }
-        }*/
-
         public class IRFunction : IRNode
         {
             public string name;
@@ -806,7 +783,7 @@ namespace ils
                 this.variableType = valType;
 
 
-                switch (this.variableType)
+                switch (this.variableType)  
                 {
                     case VariableType.STRING:
                         this.value = $"\"{val}\"";

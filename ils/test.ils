@@ -1,6 +1,6 @@
 fun main() -> int
 {
-	println('x');
+	println(1+1);
 	return 0;
 }
 

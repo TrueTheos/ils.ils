@@ -3,9 +3,12 @@ main:
 	push rbp
 	mov rbp, rsp
 	.SCOPE_1_START:
-	mov rdx, 120
-	mov rdi, charFormat
-	mov rsi, rdx
+	mov rdx, 0
+	mov rdx, 1
+	add rdx, 1
+	mov rcx, rcx
+	mov rdi, 
+	mov rsi, rcx
 	mov rax, 0
 	call printf
 	pop rbp
