@@ -18,9 +18,9 @@ namespace ils
         public abstract class BuiltinFunction
         {
             public string name;
-            public List<VariableType?> arguments;
+            public List<DataType?> arguments;
             
-            public BuiltinFunction(string _name, List<VariableType?> _arguments)
+            public BuiltinFunction(string _name, List<DataType?> _arguments)
             {
                 name = _name;
                 arguments = _arguments;
@@ -31,7 +31,7 @@ namespace ils
         {
             public string libcName;
 
-            public LibcFunction(string _name, List<VariableType?> _arguments, string _libcName) : base(_name, _arguments)
+            public LibcFunction(string _name, List<DataType?> _arguments, string _libcName) : base(_name, _arguments)
             {
                 libcName = _libcName; 
             }
@@ -67,13 +67,13 @@ namespace ils
 
                 switch(arg.variableType)
                 {
-                    case VariableType.INT: break;
+                    case DataType.INT: break;
                     default: ErrorHandler.Custom($"Function '{name}' rquires int as argument!"); break;
                 }
 
                 ASMGenerator.Mov("rax", "60");
 
-                if (arg is LiteralVariable lit)
+                if (arg is LiteralVariable)
                 {
                     ASMGenerator.Mov("rdi", arg.value);
                 }
@@ -97,27 +97,32 @@ namespace ils
                 )
             { }
 
+            private string GetFormat(Variable var)
+            {
+                switch (var.variableType)
+                {
+                    case DataType.STRING:
+                        return "strFormat";
+                    case DataType.INT:
+                        return "intFormat";
+                    case DataType.CHAR:
+                        return "charFormat";
+                    case DataType.BOOL:
+                        return "intFormat";
+                    case DataType.IDENTIFIER:
+                        return GetFormat(IRGenerator._allVariables[var.value]);
+                }
+
+                return "broke";
+            }
+
             public override void GenerateASM(List<Variable> arguments)
             {
                 string format = "";
 
                 Variable msg = arguments[0];
 
-                switch (msg.variableType)
-                {
-                    case VariableType.STRING:
-                        format = "strFormat";
-                        break;
-                    case VariableType.INT:
-                        format = "intFormat";
-                        break;
-                    case VariableType.CHAR:
-                        format = "charFormat";
-                        break;
-                    case VariableType.BOOL:
-                        format = "intFormat";
-                        break;
-                }
+                format = GetFormat(msg);
 
                 ASMGenerator.Mov("rdi", format);
 

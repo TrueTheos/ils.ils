@@ -296,6 +296,10 @@
 
             ASTScope scope = ParseScope(_currentScope, ScopeType.FUNCTION);
 
+            if(variableType != null && scope.GetStatementsOfType<ASTReturn>().Count == 0)
+            {
+                ErrorHandler.Custom($"Function '{identifier.value}' doesn't return a value!");
+            }
             return new ASTFunction(identifier, parameters, variableType, scope, variableType != null ? scope.GetStatementsOfType<ASTReturn>().Last() : null);
         }
 
@@ -555,7 +559,7 @@
             return type switch
             {
                 TokenType.MINUS or TokenType.PLUS => 0,
-                TokenType.SLASH or TokenType.STAR => 1,
+                TokenType.SLASH or TokenType.STAR or TokenType.PERCENT => 1,
                 _ => -1,
             };
         }

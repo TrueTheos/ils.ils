@@ -21,6 +21,7 @@ namespace ils
         MINUS, // -
         STAR, // *
         SLASH, // /
+        PERCENT, // %
 
         OPEN_PARENTHESIS, // (
         CLOSE_PARENTHESIS, // )
@@ -61,6 +62,6 @@ namespace ils
 
     public enum ArithmeticOpType
     {
-        ADD, MUL, SUB, DIV
+        ADD, MUL, SUB, DIV, MOD
     }
 }

@@ -20,10 +20,28 @@ namespace ils
 
         private int _stackSize;
 
-        private readonly List<string> _scratchRegs = ["rdx", "rcx", "r8", "r9", "r10", "r11"];
+        private readonly List<Register> _regs =
+        [
+            new() { name = "rcx", isPreserved =  false},
+            new() { name = "rdx", isPreserved =  false},
+            new() { name = "r8",  isPreserved =  false},
+            new() { name = "r9",  isPreserved =  false},
+            new() { name = "r10", isPreserved =  false},
+            new() { name = "r11", isPreserved =  false},
+            new() { name = "r12", isPreserved =  true},
+            new() { name = "r13", isPreserved =  true},
+            new() { name = "r14", isPreserved =  true},
+            new() { name = "r15", isPreserved =  true},
+        ];
 
-        public static Queue<string> _availableRegs = new();
-        public static Dictionary<string, string> _usedRegs = new();
+        public struct Register
+        {
+            public string name;
+            public bool isPreserved;
+        }
+
+        public static Queue<Register> _availableRegs = new();
+        public static Dictionary<string, Register> _usedRegs = new();
 
         public static string asm = "";
 
@@ -60,7 +78,7 @@ namespace ils
 
         public string GenerateASM(List<IRNode> ir)
         {
-            foreach (string reg in _scratchRegs)
+            foreach (var reg in _regs)
             {
                 _availableRegs.Enqueue(reg);
             }
@@ -105,6 +123,11 @@ namespace ils
         private void GenerateFunction(IRFunction func)
         {
             AddAsm($"{func.name}:", 0);
+
+            foreach(var par in func.parameters)
+            {
+                GenerateVariable(par);
+            }
         }
 
         private void GenerateFunctionCall(IRFunctionCall func)
@@ -133,47 +156,61 @@ namespace ils
         {
             if (var is NamedVariable namedVar)
             {
-                if (VarExists(namedVar.variableName))
+                if (namedVar.isGlobal)
                 {
-                    ErrorHandler.Custom($"Variable {namedVar.variableName} already exists!");
-                    return;
-                }
+                    if (VarExists(namedVar.variableName))
+                    {
+                        ErrorHandler.Custom($"Variable {namedVar.variableName} already exists!");
+                        return;
+                    }
 
-                switch (namedVar.variableType)
+                    switch (namedVar.variableType)
+                    {
+                        case DataType.CHAR:
+                            _dataSection.Add(namedVar.variableName, new ReservedVariable()
+                            {
+                                name = namedVar.variableName,
+                                word = _words[1],
+                                var = namedVar
+                            });
+                            break;
+                        case DataType.INT:
+                            _dataSection.Add(namedVar.variableName, new ReservedVariable()
+                            {
+                                name = namedVar.variableName,
+                                word = _words[4],
+                                var = namedVar
+                            });
+                            break;
+                        case DataType.BOOL:
+                            _dataSection.Add(namedVar.variableName, new ReservedVariable()
+                            {
+                                name = namedVar.variableName,
+                                word = _words[1],
+                                var = namedVar
+                            });
+                            break;
+                        case DataType.STRING:
+                            //todo
+                            break;
+                    }
+                }
+                else
                 {
-                    case VariableType.CHAR:
-                        _dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[1],
-                            var = namedVar });
-                        break;
-                    case VariableType.INT:
-                        _dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[4],
-                            var = namedVar });
-                        break;
-                    case VariableType.BOOL:
-                        _dataSection.Add(namedVar.variableName, new ReservedVariable() { name = namedVar.variableName, word = _words[1],
-                            var = namedVar });
-                        break;
-                    case VariableType.STRING:
-                        //todo
-                        break;
+                    if (namedVar.isFuncArg)
+                    {
+                        GenerateStackVar(namedVar);
+
+                    }
+                    else
+                    {
+                        GenerateTempVariable(namedVar);
+                    }
                 }
             }
             if(var is TempVariable tempVar) 
             {
                 GenerateTempVariable(tempVar);
-            }
-            if(var is LocalVariable localVar)
-            {
-                if(localVar.isFuncArg)
-                {
-                    GenerateStackVar(localVar);
-
-                }
-                else
-                {
-                    GenerateTempVariable(localVar);
-                }
-                
             }
         }
 
@@ -181,7 +218,7 @@ namespace ils
 
         public static Dictionary<string, StackVar> stackvars = new();
 
-        public static void GenerateStackVar(LocalVariable arg)
+        public static void GenerateStackVar(NamedVariable arg)
         {
             stackvars.Add(arg.variableName, new StackVar() { offset = stackVars, var = arg });
             stackVars++;
@@ -195,37 +232,28 @@ namespace ils
 
         public static void GenerateTempVariable(Variable var)
         {
-            string reg = _availableRegs.Dequeue();
-            _usedRegs.Add(var.variableName, reg);
+            Register reg = _availableRegs.Dequeue();
+            _usedRegs[var.variableName] = reg;
 
             //if(var is )
 
             switch (var.variableType)
             {
-                case VariableType.STRING:
+                case DataType.STRING:
                     Console.WriteLine("TODO 179");
                     break;
-                case VariableType.INT:
-                    Mov(reg, var.value);
+                case DataType.INT:
+                    Mov(reg.name, var.value);
                     break;
-                case VariableType.CHAR:
-                    Mov(reg, var.value);
+                case DataType.CHAR:
+                    Mov(reg.name, var.value);
                     break;
-                case VariableType.BOOL:
-                    Mov(reg, var.value);
+                case DataType.BOOL:
+                    Mov(reg.name, var.value);
                     break;
-                case VariableType.IDENTIFIER:
-                    string val = "";
-                    if (_dataSection.TryGetValue(var.value, out ReservedVariable res))
-                    {
-                        val = $"[{res.var.variableName}]";
-                    }
-                    else
-                    {
-                        if (_usedRegs.TryGetValue(var.value, out val)) { }
-                        else val = var.value;
-                    }
-                    Mov(reg, val);
+                case DataType.IDENTIFIER:
+                    string val = GetLocation(IRGenerator._allVariables[var.value]);                   
+                    Mov(reg.name, val);
                     break;
             }
         }
@@ -237,24 +265,24 @@ namespace ils
 
             switch (asign.assignedType)
             {
-                case VariableType.STRING:
+                case DataType.STRING:
                     //todo
                     break;
-                case VariableType.INT:
+                case DataType.INT:
                     val = asign.value;
                     break;
-                case VariableType.CHAR:
+                case DataType.CHAR:
                     //AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
                     break;
-                case VariableType.BOOL:
+                case DataType.BOOL:
                     //AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
                     break;
-                case VariableType.IDENTIFIER:
+                case DataType.IDENTIFIER:
                     if (_dataSection.TryGetValue(asign.value, out ReservedVariable var))
                     { 
                         val = $"[{var.var.variableName}]"; 
                     }
-                    else val = _usedRegs[asign.value];
+                    else val = _usedRegs[asign.value].name;
                     break;
             }
 
@@ -263,7 +291,7 @@ namespace ils
 
         private void GenerateArithmeticOP(IRArithmeticOp arop)
         {
-            string location = _usedRegs[arop.resultLocation.variableName];
+            string location = _usedRegs[arop.resultLocation.variableName].name;
 
             string a = GetLocation(arop.a);
             string b = GetLocation(arop.b);
@@ -289,12 +317,19 @@ namespace ils
                     AddAsm($"div rbx");
                     Mov(location, "rax");
                     break;
+                case ArithmeticOpType.MOD:
+                    Mov("rax", a);
+                    Mov("rbx", b);
+                    AddAsm($"cqo");
+                    AddAsm($"div rbx");
+                    Mov(location, "rdx"); //TODO to sie wyjebie na 100% bo rdx jest jako wolny rejestr uzywane
+                    break;
             }
         }
 
         private void GenerateDestroyTemp(IRDestroyTemp dtp) 
         {
-            string reg = _usedRegs[dtp.temp];
+            Register reg = _usedRegs[dtp.temp];
 
             _availableRegs.Enqueue(reg);
             _usedRegs.Remove(dtp.temp);
@@ -308,19 +343,19 @@ namespace ils
             {
                 switch (compare.a.variableType)
                 {
-                    case VariableType.STRING:
+                    case DataType.STRING:
                         sizeA = "byte ";
                         break;
-                    case VariableType.INT:
+                    case DataType.INT:
                         sizeA = "dword ";
                         break;
-                    case VariableType.CHAR:
+                    case DataType.CHAR:
                         sizeA = "byte ";
                         break;
-                    case VariableType.BOOL:
+                    case DataType.BOOL:
                         sizeA = "byte ";
                         break;
-                    case VariableType.IDENTIFIER:
+                    case DataType.IDENTIFIER:
                         sizeA = "dword ";
                         break;
                 }
@@ -333,19 +368,19 @@ namespace ils
             {
                 switch (compare.b.variableType)
                 {
-                    case VariableType.STRING:
+                    case DataType.STRING:
                         sizeB = "byte ";
                         break;
-                    case VariableType.INT:
+                    case DataType.INT:
                         sizeB = "dword ";
                         break;
-                    case VariableType.CHAR:
+                    case DataType.CHAR:
                         sizeB = "byte ";
                         break;
-                    case VariableType.BOOL:
+                    case DataType.BOOL:
                         sizeB = "byte ";
                         break;
-                    case VariableType.IDENTIFIER:
+                    case DataType.IDENTIFIER:
                         sizeB = "dword ";
                         break;
                 }
@@ -409,54 +444,57 @@ namespace ils
         {
             if(var is TempVariable temp)
             {
-                if(_usedRegs.TryGetValue(temp.variableName, out string val))
+                if(_usedRegs.TryGetValue(temp.variableName, out Register val))
                 {
-                    return val;
+                    return val.name;
                 }
                 else
                 {
                     GenerateTempVariable(temp);
-                    return _usedRegs[temp.variableName];
+                    return _usedRegs[temp.variableName].name;
                 }
             }
             else if(var is NamedVariable namedVar)
             {
-                return $"[{_dataSection[namedVar.variableName].name}]";
-            }
-            else if(var is LocalVariable local)
-            {
-                if(local.isFuncArg)
+                if(namedVar.isGlobal)
                 {
-                    if(stackvars.TryGetValue(local.variableName, out StackVar stackVar))
-                    {
-                        return $"[rsp+{8 + stackvars[local.variableName].offset * 8}]";
-                    }
-                    else
-                    {
-                        GenerateStackVar(local);
-                        return $"[rsp+{8 + stackvars[local.variableName].offset * 8}]";
-                    }
-                }
-                if (_usedRegs.TryGetValue(local.variableName, out string val))
-                {
-                    return val;
+                    return $"[{_dataSection[namedVar.variableName].name}]";
                 }
                 else
                 {
-                    GenerateTempVariable(local);
-                    return _usedRegs[local.variableName];
+                    if(namedVar.isFuncArg)
+                    {
+                        if (stackvars.TryGetValue(namedVar.variableName, out StackVar stackVar))
+                        {
+                            return $"[rsp+{8 + stackvars[namedVar.variableName].offset * 8}]";
+                        }
+                        else
+                        {
+                            GenerateStackVar(namedVar);
+                            return $"[rsp+{8 + stackvars[namedVar.variableName].offset * 8}]";
+                        }
+                    }
+                    else if (_usedRegs.TryGetValue(namedVar.variableName, out Register val))
+                    {
+                        return val.name;
+                    }
+                    else
+                    {
+                        GenerateTempVariable(namedVar);
+                        return _usedRegs[namedVar.variableName].name;
+                    }
                 }
-            }
+            }         
             else if(var is LiteralVariable lit && generateLiteral)
             {
-                if (_usedRegs.TryGetValue(lit.variableName, out string val))
+                if (_usedRegs.TryGetValue(lit.variableName, out Register val))
                 {
-                    return val;
+                    return val.name;
                 }
                 else
                 {
                     GenerateTempVariable(lit);
-                    return _usedRegs[lit.variableName];
+                    return _usedRegs[lit.variableName].name;
                 }
             }
             else if(var is RegVariable regvar)

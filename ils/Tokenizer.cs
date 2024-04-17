@@ -282,6 +282,11 @@ namespace ils
                     Consume();
                     _tokens.Add(new(TokenType.PLUS, lineCount, buffer));
                 }
+                else if (Expect("%"))
+                {
+                    Consume();
+                    _tokens.Add(new(TokenType.PERCENT, lineCount, buffer));
+                }
                 else if (Expect("-"))
                 {
                     Consume();

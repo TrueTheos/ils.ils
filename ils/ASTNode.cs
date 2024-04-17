@@ -92,27 +92,27 @@ namespace ils
     public abstract class ASTLiteral : ASTExpression
     {
         public string value;
-        public VariableType variableType;
+        public DataType variableType;
     }
 
     public class ASTIntLiteral : ASTLiteral
     {
-        public ASTIntLiteral(string value) { this.value = value; variableType = VariableType.INT; }
+        public ASTIntLiteral(string value) { this.value = value; variableType = DataType.INT; }
     }
 
     public class ASTStringLiteral : ASTLiteral
     {
-        public ASTStringLiteral(string value) { this.value = value; variableType = VariableType.STRING; }
+        public ASTStringLiteral(string value) { this.value = value; variableType = DataType.STRING; }
     }
 
     public class ASTCharLiteral : ASTLiteral
     {
-        public ASTCharLiteral(string value) { this.value = ((int)value[0]).ToString(); variableType = VariableType.CHAR; }
+        public ASTCharLiteral(string value) { this.value = ((int)value[0]).ToString(); variableType = DataType.CHAR; }
     }
 
     public class ASTBoolLiteral : ASTLiteral
     {
-        public ASTBoolLiteral(string value) { this.value = value == "true" ? "1" : "0"; variableType = VariableType.BOOL; }
+        public ASTBoolLiteral(string value) { this.value = value == "true" ? "1" : "0"; variableType = DataType.BOOL; }
     }
 
     public class ASTArithmeticOperation : ASTExpression
@@ -138,6 +138,9 @@ namespace ils
                     break;
                 case TokenType.STAR:
                     this.operation = ArithmeticOpType.MUL;
+                    break;
+                case TokenType.PERCENT:
+                    this.operation = ArithmeticOpType.MOD;
                     break;
             }
         }

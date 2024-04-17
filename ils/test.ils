@@ -1,30 +1,14 @@
+number: int = 15;
+
 fun main() -> int
 {
-	println(1+1);
+	i: int = 0;
+
+	while(i < 10)
+	{
+		i = i + 1;
+		println(i);
+	}
+
 	return 0;
 }
-
-/*
-
-number: int = 0;
-
-fun main() -> int
-{
-	while(number <= 10)
-	{
-		println(number);
-		number = number + 1;
-	}
-	
-	om: int = add(1;2;);
-	println(om);
-
-	return number;
-}
-
-fun add(a: int; b: int;) -> int
-{
-	return a + b;
-}
-
-*/
