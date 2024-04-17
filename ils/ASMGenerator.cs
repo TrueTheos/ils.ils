@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static ils.ASMGenerator.Scope;
 using static ils.Builtins;
 using static ils.IRGenerator;
 
@@ -18,8 +19,6 @@ namespace ils
             { 8, new Word(){ shortName = Word.ShortName.dq} }
         };
 
-        private int _stackSize;
-
         private readonly List<Register> _regs =
         [
             new() { name = "rcx", isPreserved =  false},
@@ -28,6 +27,7 @@ namespace ils
             new() { name = "r9",  isPreserved =  false},
             new() { name = "r10", isPreserved =  false},
             new() { name = "r11", isPreserved =  false},
+            new() { name = "rbx", isPreserved =  true},
             new() { name = "r12", isPreserved =  true},
             new() { name = "r13", isPreserved =  true},
             new() { name = "r14", isPreserved =  true},
@@ -40,14 +40,43 @@ namespace ils
             public bool isPreserved;
         }
 
-        public static Queue<Register> _availableRegs = new();
-        public static Dictionary<string, Register> _usedRegs = new();
+        public Queue<Register> _availableRegs = new();
+        public Dictionary<string, Register> _usedRegs = new();
 
-        public static string asm = "";
+        public string asm = "";
 
-        public static Dictionary<string, ReservedVariable> _dataSection = new();
+        public Dictionary<string, ReservedVariable> _dataSection = new();
 
-        private void Push(string v)
+        public Scope _currentScope;
+
+        public class Scope
+        {
+            public int id;
+
+            public List<Register> vars = new();
+            public Dictionary<string, StackVar> stackvars = new();
+
+            public int stackSize = 1;
+
+            public Scope(int id)
+            {
+                this.id = id;
+            }
+
+            public void GenerateStackVar(NamedVariable arg)
+            {
+                stackvars.Add(arg.variableName, new StackVar() { offset = stackSize, var = arg });
+                stackSize++;
+            }
+
+            public struct StackVar
+            {
+                public int offset;
+                public Variable var;
+            }
+        }        
+
+        /*private void Push(string v)
         {
             AddAsm($"push {v}");
             _stackSize++;
@@ -57,11 +86,12 @@ namespace ils
         {
             AddAsm($"pop {v}");
             _stackSize--;
-        }
+        }*/
 
 
-        public static void Mov(string destination, string source)
+        public void Mov(string destination, string source)
         {
+            
             AddAsm($"mov {destination}, {source}");
         }
 
@@ -109,7 +139,7 @@ namespace ils
             return asm;
         }
 
-        public static void AddAsm(string code, int tabsCount = 1)
+        public void AddAsm(string code, int tabsCount = 1)
         {
             string tabs = new string('\t', tabsCount);
             asm += tabs + code + '\n';
@@ -199,7 +229,7 @@ namespace ils
                 {
                     if (namedVar.isFuncArg)
                     {
-                        GenerateStackVar(namedVar);
+                        _currentScope.GenerateStackVar(namedVar);
 
                     }
                     else
@@ -212,30 +242,21 @@ namespace ils
             {
                 GenerateTempVariable(tempVar);
             }
-        }
+        }  
 
-        public static int stackVars = 1;
-
-        public static Dictionary<string, StackVar> stackvars = new();
-
-        public static void GenerateStackVar(NamedVariable arg)
+        public void GenerateTempVariable(Variable var)
         {
-            stackvars.Add(arg.variableName, new StackVar() { offset = stackVars, var = arg });
-            stackVars++;
-        }
-
-        public struct StackVar
-        {
-            public int offset;
-            public Variable var;
-        }
-
-        public static void GenerateTempVariable(Variable var)
-        {
-            Register reg = _availableRegs.Dequeue();
+            Register reg;
+            if(var.needsPreservedReg)
+            {
+                reg = _availableRegs.DequeueItemWithCondition(i => i.isPreserved);
+            }
+            else
+            {
+                _availableRegs.TryDequeue(out reg);
+            }
             _usedRegs[var.variableName] = reg;
 
-            //if(var is )
 
             switch (var.variableType)
             {
@@ -423,6 +444,13 @@ namespace ils
             AddAsm($"ret {ret.valuesOnStackToClear * 8}");
         }
 
+        private void GenerateScopeStart(IRScopeStart start)
+        {
+            _currentScope = new Scope(start.scope.id);
+        }
+
+        private void GenerateScopeEnd(IRScopeEnd end) { }
+
         private void GenerateIRNode(IRNode node)
         {
             if (node is IRLabel label) { AddAsm($".{label.labelName}:"); }
@@ -438,9 +466,11 @@ namespace ils
             if(node is IRCompare comp) { GenerateCompare(comp); }
             if(node is IRJump jump) { GenerateJump(jump); }
             if(node is IRReturn ret) { GenerateReturn(ret); }
+            if (node is IRScopeStart start) { GenerateScopeStart(start); }
+            if (node is IRScopeEnd end) { GenerateScopeEnd(end); }
         }
 
-        public static string GetLocation(Variable var, bool generateLiteral = false)
+        public string GetLocation(Variable var, bool generateLiteral = false)
         {
             if(var is TempVariable temp)
             {
@@ -464,14 +494,14 @@ namespace ils
                 {
                     if(namedVar.isFuncArg)
                     {
-                        if (stackvars.TryGetValue(namedVar.variableName, out StackVar stackVar))
+                        if (_currentScope.stackvars.TryGetValue(namedVar.variableName, out StackVar stackVar))
                         {
-                            return $"[rsp+{8 + stackvars[namedVar.variableName].offset * 8}]";
+                            return $"[rsp+{8 + _currentScope.stackvars[namedVar.variableName].offset * 8}]";
                         }
                         else
                         {
-                            GenerateStackVar(namedVar);
-                            return $"[rsp+{8 + stackvars[namedVar.variableName].offset * 8}]";
+                            _currentScope.GenerateStackVar(namedVar);
+                            return $"[rsp+{8 + _currentScope.stackvars[namedVar.variableName].offset * 8}]";
                         }
                     }
                     else if (_usedRegs.TryGetValue(namedVar.variableName, out Register val))

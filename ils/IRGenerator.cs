@@ -76,7 +76,11 @@ namespace ils
             }
             
             IRLabel scopeStart = new($"SCOPE_{_currentScope.id}_START");
-            if(_currentScope.id != 0) _IR.Add(scopeStart);
+            if (_currentScope.id != 0)
+            {
+                _IR.Add(scopeStart);
+                _IR.Add(new IRScopeStart(_currentScope));
+            }
             IRLabel scopeEnd = new($"SCOPE_{_currentScope.id}_END");
 
             _scopeLabels.Add(astScope, new ScopeLabels() { startLabel = scopeStart, endLabel = scopeEnd });
@@ -246,7 +250,11 @@ namespace ils
 
             _tempVariables.Clear();
 
-            if (_currentScope.id != 0) _IR.Add(scopeEnd);
+            if (_currentScope.id != 0)
+            {
+                _IR.Add(scopeEnd);
+                _IR.Add(new IRScopeEnd(_currentScope));
+            }
 
             _currentScope = parentScope;
         }
@@ -711,6 +719,13 @@ namespace ils
 
             public bool needsPreservedReg = false;
 
+            public Guid guid;
+
+            public Variable()
+            {
+                guid = Guid.NewGuid();
+            }
+
             public void SetValue(string val, DataType valType)
             {
                 this.variableType = valType;
@@ -740,11 +755,11 @@ namespace ils
             {
                 if (val is TempVariable tempVar)
                 {
-                    SetValue(tempVar.variableName, DataType.IDENTIFIER);
+                    SetValue(tempVar.guid.ToString(), DataType.IDENTIFIER);
                 }
                 if (val is NamedVariable namedVar)
                 {
-                    SetValue(namedVar.variableName, DataType.IDENTIFIER);
+                    SetValue(namedVar.guid.ToString(), DataType.IDENTIFIER);
                 }
                 if (val is LiteralVariable literalVar)
                 {
@@ -774,7 +789,7 @@ namespace ils
                 this.variableType = varType;
                 SetValue(reg, variableType);
 
-                _allVariables[this.variableName] = this;
+                _allVariables[this.guid.ToString()] = this;
             }
 
             public override string GetString()
@@ -820,7 +835,7 @@ namespace ils
                         break;
                 }
 
-                _allVariables.Add(this.variableName, this);
+                _allVariables.Add(guid.ToString(), this);
             }
 
             public override string GetString()
@@ -838,7 +853,7 @@ namespace ils
                 this.variableType = varType;
                 SetValue(value, variableType);
 
-                _allVariables.Add(this.variableName, this);
+                _allVariables.Add(guid.ToString(), this);
             }
 
             public override string GetString()
@@ -859,7 +874,7 @@ namespace ils
 
                 SetValue(value, variableType);
 
-                _allVariables.Add(this.variableName, this);
+                _allVariables.Add(guid.ToString(), this);
             }
 
             public override string GetString()
@@ -957,6 +972,38 @@ namespace ils
             public override string GetString()
             {
                 return $"({Name}, {resultLocation.variableName} = {a.variableName}, {b.variableName})";
+            }
+        }
+
+        public class IRScopeStart : IRNode
+        {
+            public Scope scope;
+
+            public IRScopeStart(Scope scope)
+            {
+                Name = "START";
+                this.scope = scope;
+            }
+
+            public override string GetString()
+            {
+                return $"({Name})";
+            }
+        }
+
+        public class IRScopeEnd : IRNode
+        {
+            public Scope scope;
+
+            public IRScopeEnd(Scope scope)
+            {
+                Name = "END";
+                this.scope = scope;
+            }
+
+            public override string GetString()
+            {
+                return $"({Name})";
             }
         }
 

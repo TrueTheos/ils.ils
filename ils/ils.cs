@@ -6,6 +6,8 @@ class ILS
     const string SOURCE_FILE = "C:\\Projects\\ils.ils\\ils\\test.ils";
     const string OUTPUT_FILE = "C:\\Projects\\ils.ils\\ils\\out.asm";
 
+    public static ASMGenerator asmGen;
+
     static void Main(string[] args)
     {
         if (File.Exists(SOURCE_FILE))
@@ -39,8 +41,8 @@ class ILS
             var ir = irGenerator.Generate(mainScope);
             IROptimizer optimizer = new();
             var optimizedIR = optimizer.GetOptimizedIR(ir);
-            ASMGenerator asmGenerator = new();
-            string asm = asmGenerator.GenerateASM(optimizedIR);
+            asmGen = new();
+            string asm = asmGen.GenerateASM(optimizedIR);
 
             using (StreamWriter writer = new StreamWriter(OUTPUT_FILE))
             {

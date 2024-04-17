@@ -1,14 +1,14 @@
-number: int = 15;
-
 fun main() -> int
 {
 	i: int = 0;
 
 	while(i < 10)
 	{
+		if(i % 2 == 0)
+		{
+			println(i);
+		}
 		i = i + 1;
-		println(i);
 	}
-
 	return 0;
 }

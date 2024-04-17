@@ -71,19 +71,19 @@ namespace ils
                     default: ErrorHandler.Custom($"Function '{name}' rquires int as argument!"); break;
                 }
 
-                ASMGenerator.Mov("rax", "60");
+                ILS.asmGen.Mov("rax", "60");
 
                 if (arg is LiteralVariable)
                 {
-                    ASMGenerator.Mov("rdi", arg.value);
+                    ILS.asmGen.Mov("rdi", arg.value);
                 }
                 else
                 {
-                    ASMGenerator.Mov("rdi", ASMGenerator.GetLocation(arg));
+                    ILS.asmGen.Mov("rdi", ILS.asmGen.GetLocation(arg));
                 }
 
 
-                ASMGenerator.AddAsm("syscall");
+                ILS.asmGen.AddAsm("syscall");
             }
         }
 
@@ -124,13 +124,13 @@ namespace ils
 
                 format = GetFormat(msg);
 
-                ASMGenerator.Mov("rdi", format);
+                ILS.asmGen.Mov("rdi", format);
 
-                ASMGenerator.Mov("rsi", ASMGenerator.GetLocation(msg));
+                ILS.asmGen.Mov("rsi", ILS.asmGen.GetLocation(msg));
 
-                ASMGenerator.Mov("rax", "0");
+                ILS.asmGen.Mov("rax", "0");
 
-                ASMGenerator.AddAsm($"call {libcName}");
+                ILS.asmGen.AddAsm($"call {libcName}");
             }
         }
     }
