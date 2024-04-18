@@ -20,7 +20,7 @@ namespace ils
 
         public static void Expected(string message, Token token) 
         {
-            Log($"[{token.line}] Expected '{message}' but received {token.tokenType}!");
+            Log($"[{token.line}] Expected '{message}' but received '{token.value}'!");
         }
     }
 }

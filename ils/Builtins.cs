@@ -79,7 +79,7 @@ namespace ils
                 }
                 else
                 {
-                    ILS.asmGen.Mov("rdi", ILS.asmGen.GetLocation(arg));
+                    ILS.asmGen.Mov("rdi", ILS.asmGen.GetLocation(arg, false, false));
                 }
 
 
@@ -126,7 +126,7 @@ namespace ils
 
                 ILS.asmGen.Mov("rdi", format);
 
-                ILS.asmGen.Mov("rsi", ILS.asmGen.GetLocation(msg));
+                ILS.asmGen.Mov("rsi", ILS.asmGen.GetLocation(msg, false , false));
 
                 ILS.asmGen.Mov("rax", "0");
 

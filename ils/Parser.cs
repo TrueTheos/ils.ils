@@ -597,7 +597,7 @@
             {
                 return Consume();
             }
-            ErrorHandler.Expected(type.ToString(), Peek(-1));
+            ErrorHandler.Expected(type.ToString(), Peek());
             return null;
         }
 

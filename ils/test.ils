@@ -1,14 +1,11 @@
 fun main() -> int
 {
-	i: int = 0;
-
-	while(i < 10)
-	{
-		if(i % 2 == 0)
-		{
-			println(i);
-		}
-		i = i + 1;
-	}
+	z: int = a(30);
+	println(z);
 	return 0;
+}
+
+fun a(limit: int) -> int
+{
+	return limit;
 }

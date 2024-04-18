@@ -2,39 +2,33 @@ global main
 main:
 	push rbp
 	mov rbp, rsp
+	sub rsp, 8
 	.SCOPE_1_START:
-	mov rcx, 0
-	.WHILE_4_START:
-	cmp dword rcx, 10
-	jge .WHILE_4_END
-	.SCOPE_2_START:
-	mov rdx, 0
-	mov rax, rcx
-	mov rbx, 2
-	cqo
-	div rbx
-	mov rdx, rdx
-	cmp rdx, 0
-	jne .IF_8
-	.SCOPE_3_START:
-	mov rbx, rcx
+	mov qword [rbp-8], rax
+	push 30
+	call a
+	mov rbx, [rbp-8]
 	mov rdi, intFormat
 	mov rsi, rbx
 	mov rax, 0
 	call printf
-	.SCOPE_3_END:
-	.IF_8:
-	mov r12, 0
-	mov r12, rcx
-	add r12, 1
-	mov rcx, r12
-	.SCOPE_2_END:
-	jmp .WHILE_4_START
-	.WHILE_4_END:
-	pop rbp
 	mov rax, 0
-	ret 0
+	jmp .SCOPE_1_END
 	.SCOPE_1_END:
+	mov rsp, rbp
+	pop rbp
+	ret
+a:
+	push rbp
+	mov rbp, rsp
+	sub rsp, 8
+	.SCOPE_2_START:
+	mov rax, [rbp+16]
+	jmp .SCOPE_2_END
+	.SCOPE_2_END:
+	mov rsp, rbp
+	pop rbp
+	ret
 section .data
 	strFormat db "%s", 10, 0
 	intFormat db "%d", 10, 0

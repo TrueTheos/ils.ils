@@ -33,6 +33,19 @@ namespace ils
         private Scope _mainScope;
         private Dictionary<int, Scope> _scopes = new();
 
+        private ScopeLabels _currentFunc;
+
+        private Dictionary<ConditionType, ConditionType> oppositeCondition = new()
+        {
+            { ConditionType.EQUAL, ConditionType.NOT_EQUAL },
+            { ConditionType.NOT_EQUAL, ConditionType.EQUAL },
+            { ConditionType.LESS, ConditionType.GREATER_EQUAL },
+            { ConditionType.LESS_EQUAL, ConditionType.GREATER },
+            { ConditionType.GREATER, ConditionType.LESS_EQUAL },
+            { ConditionType.GREATER_EQUAL, ConditionType.LESS },
+            { ConditionType.NONE, ConditionType.NONE },
+        };
+
         public List<IRNode> Generate(ASTScope mainScope)
         {
             ParseScope(mainScope, null, ScopeType.DEFAULT);
@@ -70,20 +83,25 @@ namespace ils
                 _scopes.Add(_currentScope.id, _currentScope);
             }
 
+            IRFunctionPrologue? funcPrologue = null;
             if(scopeType == ScopeType.FUNCTION)
             {
-                _IR.Add(new IRFunctionPrologue());
+                funcPrologue = new IRFunctionPrologue();
+                _IR.Add(funcPrologue);
             }
             
             IRLabel scopeStart = new($"SCOPE_{_currentScope.id}_START");
+            IRLabel scopeEnd = new($"SCOPE_{_currentScope.id}_END");
+            _scopeLabels.Add(astScope, new ScopeLabels() { startLabel = scopeStart, endLabel = scopeEnd });
             if (_currentScope.id != 0)
             {
                 _IR.Add(scopeStart);
-                _IR.Add(new IRScopeStart(_currentScope));
-            }
-            IRLabel scopeEnd = new($"SCOPE_{_currentScope.id}_END");
-
-            _scopeLabels.Add(astScope, new ScopeLabels() { startLabel = scopeStart, endLabel = scopeEnd });
+                if (scopeType == ScopeType.FUNCTION)
+                {
+                    _currentFunc = _scopeLabels[astScope];
+                    _IR.Add(new IRScopeStart(_currentScope));
+                }
+            }          
 
             if(_currentScope.id == 0) //We are in the main scope
             {
@@ -122,6 +140,9 @@ namespace ils
                 }             
             }
 
+            IRScopeEnd irScopeEnd = new IRScopeEnd(_currentScope);
+
+
             foreach (ASTStatement statement in astScope.statements)
             {
                 if(statement is ASTFunctionCall call)
@@ -144,15 +165,17 @@ namespace ils
                 else if(statement is ASTReturn ret)
                 {
                     IRReturn irret = new IRReturn(ParseExpression(ret.value), 0);
-                    if (scopeType == ScopeType.FUNCTION)
+                    
+                    if (parentNode != null && parentNode is ASTFunction astFunc)
                     {
-                        _IR.Add(new IRFunctionEpilogue());
-                        if(parentNode != null && parentNode is ASTFunction astFunc)
-                        {
-                            irret.valuesOnStackToClear = astFunc.parameters.Count;
-                        }                     
+                        irScopeEnd.valuesToClear = astFunc.parameters.Count;
                     }
+
                     _IR.Add(irret);
+                    _IR.Add(new IRJump(_currentFunc.endLabel.labelName, ConditionType.NONE));
+
+                    //AAAAAAAAA
+
                 }
                 else if(statement is ASTAssign assign)
                 {
@@ -195,7 +218,7 @@ namespace ils
                         {
                             _IR.Add(new IRAssign(saveLocation, literalVar.value.ToString(), literalVar.variableType));
                         }
-                        if (var is RegVariable regVar)
+                        if (var is FunctionReturnVariable regVar)
                         {
                             _IR.Add(new IRAssign(saveLocation, regVar.value.ToString(), regVar.variableType));
                         }
@@ -253,7 +276,13 @@ namespace ils
             if (_currentScope.id != 0)
             {
                 _IR.Add(scopeEnd);
-                _IR.Add(new IRScopeEnd(_currentScope));
+                if (scopeType == ScopeType.FUNCTION)
+                {
+                    //jezu _currentScope.localVariables.Values.Select(x => x as NamedVariable).Where(x => !x.isFuncArg).Count();
+                    funcPrologue.localVariables = _currentScope.localVariables.Count;
+                    _IR.Add(new IRFunctionEpilogue());
+                    _IR.Add(irScopeEnd);              
+                }
             }
 
             _currentScope = parentScope;
@@ -345,7 +374,7 @@ namespace ils
                 return null;
             }
 
-            //add return somehow
+            //add return somehow 
 
             _IR.Add(new IRFunctionCall(call.identifier.value, arguments));
             foreach (var arg in arguments)
@@ -353,9 +382,9 @@ namespace ils
                 arg.needsPreservedReg = true;
             }
 
-            if(func != null && func.returnType != DataType.VOID)
+            if (func != null && func.returnType != DataType.VOID)
             {
-                return new RegVariable("rax", func.returnType);
+                return new FunctionReturnVariable("rax", func.returnType);
             }
 
             return null;
@@ -378,37 +407,7 @@ namespace ils
                 return null;
             }
         }
-
-        private void ParseIf(ASTIf ifstmt, Dictionary<string, Variable> scopeVariables)
-        {
-            int labelnum = _labels.Count;
-
-            //string conditionResultName = CreateNewTempVar(DataType.BOOL, "0");
-
-            IRLabel label = new($"IF_{labelnum}");
-
-            IRCompare comp = ParseCondition(ifstmt.cond/*, _tempVariables[conditionResultName]*/);
-
-            //_IR.Add(new IRTest(conditionResultName));
-            _IR.Add(comp);
-            _IR.Add(new IRJump(label.labelName, ifstmt.cond.conditionType));
-
-            ParseScope(ifstmt.scope, _currentScope, ScopeType.IF);
-
-            if(ifstmt.pred != null)
-            {
-                IRLabel endLabel = new($"IF_{labelnum}_END");
-                _IR.Add(new IRJump(endLabel.labelName, ConditionType.NONE));
-                _IR.Add(label);
-                ParseIfPred(ifstmt.pred, endLabel);
-                _IR.Add(endLabel);
-            }
-            else
-            {
-                _IR.Add(label);
-            }
-        }
-
+     
         private void ParseWhile(ASTWhile whilestmt)
         {
             int labelnum = _labels.Count;
@@ -422,7 +421,7 @@ namespace ils
 
             _IR.Add(startLabel);
             _IR.Add(comp);
-            _IR.Add(new IRJump(endLabel.labelName, whilestmt.cond.conditionType));
+            _IR.Add(new IRJump(endLabel.labelName, oppositeCondition[whilestmt.cond.conditionType]));
 
             ParseScope(whilestmt.scope, _currentScope, ScopeType.LOOP);
             _IR.Add(new IRJump(startLabel.labelName, ConditionType.NONE));
@@ -455,6 +454,37 @@ namespace ils
             return new IRCompare(leftNodeEvalResult, rightNodeEvalResult);
         }
 
+        private void ParseIf(ASTIf ifstmt, Dictionary<string, Variable> scopeVariables)
+        {
+            int labelnum = _labels.Count;
+
+            //string conditionResultName = CreateNewTempVar(DataType.BOOL, "0");
+
+            IRLabel label = new($"IF_{labelnum}");
+
+            IRCompare comp = ParseCondition(ifstmt.cond/*, _tempVariables[conditionResultName]*/);
+
+            //_IR.Add(new IRTest(conditionResultName));
+            _IR.Add(comp);
+            _IR.Add(new IRJump(label.labelName, oppositeCondition[ifstmt.cond.conditionType]));
+
+            ParseScope(ifstmt.scope, _currentScope, ScopeType.IF);
+
+            if (ifstmt.pred != null)
+            {
+                IRLabel endLabel = new($"IF_{labelnum}_END");
+                _IR.Add(new IRJump(endLabel.labelName, ConditionType.NONE));
+                _IR.Add(label);
+                ParseIfPred(ifstmt.pred, endLabel);
+                _IR.Add(endLabel);
+            }
+            else
+            {
+                _IR.Add(label);
+            }
+        }
+
+
         private void ParseIfPred(ASTIfPred pred, IRLabel endLabel)
         {
             int labelNum = _labels.Count;
@@ -463,10 +493,18 @@ namespace ils
             {
                 //string conditionResultName = CreateNewTempVar(DataType.BOOL, "0");
 
-                ParseCondition(elif.cond/*, _tempVariables[conditionResultName]*/);
+                IRCompare comp = ParseCondition(elif.cond/*, _tempVariables[conditionResultName]*/);
+                _IR.Add(comp);
 
                 IRLabel label = new($"ELSE_{labelNum}_START");
-                _IR.Add(new IRJump(label.labelName, elif.cond.conditionType));
+                if (elif.pred != null)
+                {
+                    _IR.Add(new IRJump(label.labelName, oppositeCondition[elif.cond.conditionType]));
+                } 
+                else
+                {
+                    _IR.Add(new IRJump(endLabel.labelName, oppositeCondition[elif.cond.conditionType]));
+                }
 
                 ParseScope(elif.scope, _currentScope, ScopeType.IF);
 
@@ -527,19 +565,17 @@ namespace ils
         public class IRReturn : IRNode
         {
             public Variable ret;
-            public int valuesOnStackToClear;
 
             public IRReturn(Variable ret, int valuesOnStackToClear)
             {
                 Name = "RET";
 
                 this.ret = ret;
-                this.valuesOnStackToClear = valuesOnStackToClear;
             }
 
             public override string GetString()
             {
-                return $"({Name}, {ret.variableName}, {valuesOnStackToClear})";
+                return $"({Name}, {ret.variableName})";
             }
         }
 
@@ -561,6 +597,8 @@ namespace ils
 
         public class IRFunctionPrologue : IRNode
         {
+            public int localVariables;
+
             public IRFunctionPrologue()
             {
                 Name = "NST";
@@ -765,7 +803,7 @@ namespace ils
                 {
                     SetValue(literalVar.value, literalVar.variableType);
                 }
-                if (val is RegVariable regvar)
+                if (val is FunctionReturnVariable regvar)
                 {
                     SetValue(regvar.reg, val.variableType);
                 }
@@ -777,13 +815,13 @@ namespace ils
             }
         }
 
-        public class RegVariable : Variable
+        public class FunctionReturnVariable : Variable
         {
             public string reg;
 
-            public RegVariable(string reg, DataType varType)
+            public FunctionReturnVariable(string reg, DataType varType)
             {
-                Name = "REG";
+                Name = "FVAR";
                 this.reg = reg;
                 this.variableName = reg;
                 this.variableType = varType;
@@ -994,6 +1032,7 @@ namespace ils
         public class IRScopeEnd : IRNode
         {
             public Scope scope;
+            public int valuesToClear;
 
             public IRScopeEnd(Scope scope)
             {

@@ -41,13 +41,15 @@ namespace ils
         }
 
         public Queue<Register> _availableRegs = new();
-        public Dictionary<string, Register> _usedRegs = new();
+        public Map<string, Register> _usedRegs = new();
 
         public string asm = "";
 
         public Dictionary<string, ReservedVariable> _dataSection = new();
 
         public Scope _currentScope;
+
+        private IRFunction _currentFunc;
 
         public class Scope
         {
@@ -56,7 +58,7 @@ namespace ils
             public List<Register> vars = new();
             public Dictionary<string, StackVar> stackvars = new();
 
-            public int stackSize = 1;
+            public int stackSize = 0;
 
             public Scope(int id)
             {
@@ -65,7 +67,12 @@ namespace ils
 
             public void GenerateStackVar(NamedVariable arg)
             {
-                stackvars.Add(arg.variableName, new StackVar() { offset = stackSize, var = arg });
+                if(stackvars.ContainsKey(arg.guid.ToString()))
+                {
+                    return;
+                }
+
+                stackvars.Add(arg.guid.ToString(), new StackVar() { offset = stackSize, var = arg });
                 stackSize++;
             }
 
@@ -90,19 +97,23 @@ namespace ils
 
 
         public void Mov(string destination, string source)
-        {
-            
+        {          
             AddAsm($"mov {destination}, {source}");
         }
 
-        private void FunctionPrologue()
+        private void FunctionPrologue(IRFunctionPrologue prologue)
         {
             AddAsm("push rbp");
             Mov("rbp", "rsp");
+            if(prologue.localVariables != 0)
+            {
+                AddAsm($"sub rsp, {prologue.localVariables * 8}");
+            }   
         }
 
         private void FunctionEpilogue()
         {
+            Mov("rsp", "rbp");
             AddAsm("pop rbp");
         }
 
@@ -143,6 +154,7 @@ namespace ils
         {
             string tabs = new string('\t', tabsCount);
             asm += tabs + code + '\n';
+            //Console.WriteLine(tabs + code + '\n');
         }
 
         private bool VarExists(string name)
@@ -154,10 +166,7 @@ namespace ils
         {
             AddAsm($"{func.name}:", 0);
 
-            foreach(var par in func.parameters)
-            {
-                GenerateVariable(par);
-            }
+            _currentFunc = func;
         }
 
         private void GenerateFunctionCall(IRFunctionCall func)
@@ -176,7 +185,7 @@ namespace ils
                 args.Reverse();
                 foreach (var argument in args)
                 {
-                    AddAsm($"push {GetLocation(argument)}");
+                    AddAsm($"push {GetLocation(argument, false, false)}");
                 }
                 AddAsm($"call {func.name}");
             }
@@ -227,14 +236,10 @@ namespace ils
                 }
                 else
                 {
-                    if (namedVar.isFuncArg)
+                    _currentScope.GenerateStackVar(namedVar);
+                    if (!namedVar.isFuncArg)
                     {
-                        _currentScope.GenerateStackVar(namedVar);
-
-                    }
-                    else
-                    {
-                        GenerateTempVariable(namedVar);
+                        Mov(GetLocation(namedVar, true, false), namedVar.value);
                     }
                 }
             }
@@ -255,7 +260,7 @@ namespace ils
             {
                 _availableRegs.TryDequeue(out reg);
             }
-            _usedRegs[var.variableName] = reg;
+            _usedRegs.Add(var.variableName, reg);
 
 
             switch (var.variableType)
@@ -273,7 +278,7 @@ namespace ils
                     Mov(reg.name, var.value);
                     break;
                 case DataType.IDENTIFIER:
-                    string val = GetLocation(IRGenerator._allVariables[var.value]);                   
+                    string val = GetLocation(IRGenerator._allVariables[var.value], false, false);                   
                     Mov(reg.name, val);
                     break;
             }
@@ -281,7 +286,7 @@ namespace ils
 
         private void GenerateAssign(IRAssign asign)
         {
-            string location = GetLocation(asign.identifier);
+            string location = GetLocation(asign.identifier, true, false);
             string val = asign.value;
 
             switch (asign.assignedType)
@@ -296,14 +301,23 @@ namespace ils
                     //AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
                     break;
                 case DataType.BOOL:
-                    //AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
+                    // AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
                     break;
                 case DataType.IDENTIFIER:
-                    if (_dataSection.TryGetValue(asign.value, out ReservedVariable var))
+                    val = GetLocation(IRGenerator._allVariables.Values.Where(x => x.variableName == asign.value).First(), false, false);
+                    if (val.Contains("rbp"))
+                    {
+                        Register reg = _availableRegs.Dequeue();
+                        _usedRegs.Add(Guid.NewGuid().ToString(), reg);
+                        Mov(reg.name, val);
+                        val = reg.name;
+                        FreeReg(reg);
+                    }
+                    /*if (_dataSection.TryGetValue(asign.value, out ReservedVariable var))
                     { 
                         val = $"[{var.var.variableName}]"; 
                     }
-                    else val = _usedRegs[asign.value].name;
+                    else val = _usedRegs[asign.value].name;*/
                     break;
             }
 
@@ -312,10 +326,10 @@ namespace ils
 
         private void GenerateArithmeticOP(IRArithmeticOp arop)
         {
-            string location = _usedRegs[arop.resultLocation.variableName].name;
+            string location = GetLocation(arop.resultLocation, true, false);
 
-            string a = GetLocation(arop.a);
-            string b = GetLocation(arop.b);
+            string a = GetLocation(arop.a, false, false);
+            string b = GetLocation(arop.b, false, false);
 
             switch (arop.opType)
             {
@@ -348,66 +362,101 @@ namespace ils
             }
         }
 
+        public void FreeReg(Register reg)
+        {
+            _availableRegs.Enqueue(reg);
+            _usedRegs.Remove(reg);
+        }
+
         private void GenerateDestroyTemp(IRDestroyTemp dtp) 
         {
-            Register reg = _usedRegs[dtp.temp];
+            if (!_usedRegs.Forward.Contains(dtp.temp)) return;
+            Register reg = _usedRegs.Forward[dtp.temp];
 
-            _availableRegs.Enqueue(reg);
-            _usedRegs.Remove(dtp.temp);
+            FreeReg(reg);
         }
 
         private void GenerateCompare(IRCompare compare)
         {
             string sizeA = "";
-
-            if (compare.a is NamedVariable)
-            {
-                switch (compare.a.variableType)
-                {
-                    case DataType.STRING:
-                        sizeA = "byte ";
-                        break;
-                    case DataType.INT:
-                        sizeA = "dword ";
-                        break;
-                    case DataType.CHAR:
-                        sizeA = "byte ";
-                        break;
-                    case DataType.BOOL:
-                        sizeA = "byte ";
-                        break;
-                    case DataType.IDENTIFIER:
-                        sizeA = "dword ";
-                        break;
-                }
-            }
-            
-
             string sizeB = "";
 
-            if (compare.b is NamedVariable)
+            Register aReg;
+            Register bReg;
+
+            string compareA = GetLocation(compare.a, false, true);
+            string compareB = GetLocation(compare.b, false, false);
+
+            if (compare.a is NamedVariable namedA)
             {
-                switch (compare.b.variableType)
+                if(namedA.isGlobal)
                 {
-                    case DataType.STRING:
-                        sizeB = "byte ";
-                        break;
-                    case DataType.INT:
-                        sizeB = "dword ";
-                        break;
-                    case DataType.CHAR:
-                        sizeB = "byte ";
-                        break;
-                    case DataType.BOOL:
-                        sizeB = "byte ";
-                        break;
-                    case DataType.IDENTIFIER:
-                        sizeB = "dword ";
-                        break;
+                    switch (compare.a.variableType)
+                    {
+                        case DataType.STRING:
+                            sizeA = "byte ";
+                            break;
+                        case DataType.INT:
+                            sizeA = "qword ";
+                            break;
+                        case DataType.CHAR:
+                            sizeA = "byte ";
+                            break;
+                        case DataType.BOOL:
+                            sizeA = "byte ";
+                            break;
+                        case DataType.IDENTIFIER:
+                            sizeA = "qword ";
+                            break;
+                    }
+                }
+                else
+                {
+                    aReg = _availableRegs.Dequeue();
+                    Mov(aReg.name, compareA);
+                    compareA = aReg.name;
+                    _usedRegs.Add(Guid.NewGuid().ToString(), aReg);
+                    FreeReg(aReg);
+                }
+                            
+            }
+           
+            if (compare.b is NamedVariable namedB)
+            {
+                if (namedB.isGlobal)
+                {
+                    switch (compare.b.variableType)
+                    {
+                        case DataType.STRING:
+                            sizeB = "byte ";
+                            break;
+                        case DataType.INT:
+                            sizeB = "qword ";
+                            break;
+                        case DataType.CHAR:
+                            sizeB = "byte ";
+                            break;
+                        case DataType.BOOL:
+                            sizeB = "byte ";
+                            break;
+                        case DataType.IDENTIFIER:
+                            sizeB = "qword ";
+                            break;
+                    }
+                }
+                else
+                {
+                    bReg = _availableRegs.Dequeue();
+                    Mov(bReg.name, compareB);
+                    compareB = bReg.name;
+                    _usedRegs.Add(Guid.NewGuid().ToString(), bReg);
+                    FreeReg(bReg);
                 }
             }
-
-            AddAsm($"cmp {sizeA}{GetLocation(compare.a, true)}, {sizeB}{GetLocation(compare.b)}");
+            AddAsm($"cmp {sizeA}{compareA}, {sizeB}{compareB}");
+            
+            
+            //AddAsm($"cmp {sizeA}{GetLocation(compare.a, false, true)}, {sizeB}{GetLocation(compare.b, false, false)}");
         }
 
         private void GenerateJump(IRJump jump)
@@ -415,22 +464,22 @@ namespace ils
             switch (jump.conditionType)
             {
                 case ASTCondition.ConditionType.EQUAL:
-                    AddAsm($"jne .{jump.label}");
-                    break;
-                case ASTCondition.ConditionType.NOT_EQUAL:
                     AddAsm($"je .{jump.label}");
                     break;
+                case ASTCondition.ConditionType.NOT_EQUAL:
+                    AddAsm($"jne .{jump.label}");
+                    break;
                 case ASTCondition.ConditionType.LESS:
-                    AddAsm($"jge .{jump.label}");
+                    AddAsm($"jl .{jump.label}");
                     break;
                 case ASTCondition.ConditionType.LESS_EQUAL:
-                    AddAsm($"jg .{jump.label}");
-                    break;
-                case ASTCondition.ConditionType.GREATER:
                     AddAsm($"jle .{jump.label}");
                     break;
+                case ASTCondition.ConditionType.GREATER:
+                    AddAsm($"jg .{jump.label}");
+                    break;
                 case ASTCondition.ConditionType.GREATER_EQUAL:
-                    AddAsm($"jl .{jump.label}");
+                    AddAsm($"jge .{jump.label}");
                     break;
                 case ASTCondition.ConditionType.NONE:
                     AddAsm($"jmp .{jump.label}");
@@ -440,16 +489,31 @@ namespace ils
 
         private void GenerateReturn(IRReturn ret)
         {
-            Mov("rax", GetLocation(ret.ret));
-            AddAsm($"ret {ret.valuesOnStackToClear * 8}");
+            Mov("rax", GetLocation(ret.ret, false, false));
         }
 
         private void GenerateScopeStart(IRScopeStart start)
         {
             _currentScope = new Scope(start.scope.id);
+            foreach (var par in _currentFunc.parameters)
+            {
+                GenerateVariable(par);
+            }
         }
 
-        private void GenerateScopeEnd(IRScopeEnd end) { }
+        private void GenerateScopeEnd(IRScopeEnd end)
+        {
+            /*if(end.valuesToClear != 0)
+            {
+                AddAsm($"ret {end.valuesToClear * 8}");
+            }
+            else
+            {
+                AddAsm($"ret");
+            }*/
+
+            AddAsm($"ret");
+        }
 
         private void GenerateIRNode(IRNode node)
         {
@@ -457,8 +521,8 @@ namespace ils
             if (node is Variable variable) { GenerateVariable(variable); }
             if (node is IRAssign asign) { GenerateAssign(asign); }
             if (node is IRFunction func) { GenerateFunction(func); }
-            if (node is IRFunctionPrologue newStack) { FunctionPrologue(); }
-            if (node is IRFunctionEpilogue restoreStack) { FunctionEpilogue(); }
+            if (node is IRFunctionPrologue prologue) { FunctionPrologue(prologue); }
+            if (node is IRFunctionEpilogue epilogue) { FunctionEpilogue(); }
             if (node is IRArithmeticOp arOp) { GenerateArithmeticOP(arOp); }
             if (node is IRFunctionCall call) { GenerateFunctionCall(call); }
             if (node is IRDestroyTemp dtp) { GenerateDestroyTemp(dtp); }
@@ -470,18 +534,19 @@ namespace ils
             if (node is IRScopeEnd end) { GenerateScopeEnd(end); }
         }
 
-        public string GetLocation(Variable var, bool generateLiteral = false)
+        public string GetLocation(Variable var, bool isMovedTo, bool generateLiteral)
         {
             if(var is TempVariable temp)
             {
-                if(_usedRegs.TryGetValue(temp.variableName, out Register val))
+                Register val;
+                if (_usedRegs.Forward.TryGet(temp.variableName, out val))
                 {
                     return val.name;
                 }
                 else
                 {
                     GenerateTempVariable(temp);
-                    return _usedRegs[temp.variableName].name;
+                    return _usedRegs.Forward[temp.variableName].name;
                 }
             }
             else if(var is NamedVariable namedVar)
@@ -492,42 +557,50 @@ namespace ils
                 }
                 else
                 {
-                    if(namedVar.isFuncArg)
+                    if (!_currentScope.stackvars.TryGetValue(namedVar.guid.ToString(), out StackVar val))
                     {
-                        if (_currentScope.stackvars.TryGetValue(namedVar.variableName, out StackVar stackVar))
+                        _currentScope.GenerateStackVar(namedVar);  
+                    }
+
+                    if (namedVar.isFuncArg)
+                    {
+                        if (isMovedTo)
                         {
-                            return $"[rsp+{8 + _currentScope.stackvars[namedVar.variableName].offset * 8}]";
+                            return $"qword [rbp+{16 + _currentScope.stackvars[namedVar.guid.ToString()].offset * 8}]";
                         }
                         else
                         {
-                            _currentScope.GenerateStackVar(namedVar);
-                            return $"[rsp+{8 + _currentScope.stackvars[namedVar.variableName].offset * 8}]";
+                            return $"[rbp+{16 + _currentScope.stackvars[namedVar.guid.ToString()].offset * 8}]";
                         }
-                    }
-                    else if (_usedRegs.TryGetValue(namedVar.variableName, out Register val))
-                    {
-                        return val.name;
                     }
                     else
                     {
-                        GenerateTempVariable(namedVar);
-                        return _usedRegs[namedVar.variableName].name;
+                        int offset = _currentScope.stackvars[namedVar.guid.ToString()].offset * 8;
+                        if (offset == 0) offset = 8;
+                        if (isMovedTo)
+                        {
+                            return $"qword [rbp-{offset}]";
+                        }
+                        else
+                        {
+                            return $"[rbp-{offset}]";
+                        }
                     }
                 }
             }         
             else if(var is LiteralVariable lit && generateLiteral)
             {
-                if (_usedRegs.TryGetValue(lit.variableName, out Register val))
+                if (_usedRegs.Forward.TryGet(lit.variableName, out Register val))
                 {
                     return val.name;
                 }
                 else
                 {
                     GenerateTempVariable(lit);
-                    return _usedRegs[lit.variableName].name;
+                    return _usedRegs.Forward[lit.variableName].name;
                 }
             }
-            else if(var is RegVariable regvar)
+            else if(var is FunctionReturnVariable regvar)
             {
                 return regvar.reg;
             }
