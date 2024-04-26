@@ -316,8 +316,7 @@ namespace ils
                 }
 
                 //_variables.Add(newVar.variableName, newVar);
-                _currentScope.AddLocalVariable(newVar);
-                _IR.Add(newVar);
+                _currentScope.AddLocalVariable(newVar);            
 
                 if (vardec.value != null)
                 {
@@ -325,6 +324,8 @@ namespace ils
 
                     newVar.AssignVariable(var);
                 }
+
+                _IR.Add(newVar);
             }
         }
 
@@ -379,6 +380,7 @@ namespace ils
             IRFunctionCall ircall = new IRFunctionCall(call.identifier.value, arguments);
             if (func != null && func.returnType != DataType.VOID)
             {
+                //_IR.Add(ircall); //na razie nie pozwole na wywołanie funkcji która nie zwraca voida i nie jest przypisywana nigdzie
                 return new FunctionReturnVariable(func.name, func.returnType, _currentScope.localVariables.Count, ircall);
             }
             else
@@ -760,11 +762,13 @@ namespace ils
 
             public bool needsPreservedReg = false;
 
-            public Guid guid;
+            //public Guid guid;
+            public string guid;
 
             public Variable()
             {
-                guid = Guid.NewGuid();
+                //guid = Guid.NewGuid();
+                guid = IRGenerator.NewId();
             }
 
             public void SetValue(string val, DataType valType)
@@ -902,7 +906,7 @@ namespace ils
 
             public override string GetString()
             {
-                return $"({Name}, {variableName}, {value})";
+                return $"({Name}, {guid}, {value})";
             }
         }
 
@@ -913,7 +917,8 @@ namespace ils
                 Name = "LIT";
 
                 this.variableType = type;
-                this.variableName = $"LIT_{literalVarsCount}_{value}";
+                //this.variableName = $"LIT_{literalVarsCount}_{value}";
+                this.variableName = value.ToString();
                 literalVarsCount++;
 
                 SetValue(value, variableType);
@@ -1015,7 +1020,7 @@ namespace ils
 
             public override string GetString()
             {
-                return $"({Name}, {resultLocation.variableName} = {a.variableName}, {b.variableName})";
+                return $"({Name}, {resultLocation.guid} = {a.guid}, {b.guid})";
             }
         }
 
@@ -1086,6 +1091,13 @@ namespace ils
                 localVariables.Add(var.variableName, var);
                 allVariables.Add(var.variableName, var);
             }
+        }
+
+        public static int ids = 0;
+
+        public static string NewId()
+        {
+            return "ID_" + ids++;
         }
     }
 }

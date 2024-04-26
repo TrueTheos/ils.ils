@@ -1,7 +1,6 @@
 fun main() -> int
 {
-	//z: int = a(30) + a(15);
-	z: int = ((10*2) + 5 ) * 3;
+	z: int = a(30) * 2 + a(15);
 	println(z);
 	return 0;
 }

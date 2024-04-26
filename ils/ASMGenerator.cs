@@ -43,7 +43,7 @@ namespace ils
         public Queue<Register> _availableRegs = new();
         public Map<string, Register> _usedRegs = new();
 
-        public string asm = "";
+        public List<string> asm = new();
 
         public Dictionary<string, ReservedVariable> _dataSection = new();
 
@@ -81,7 +81,7 @@ namespace ils
                 public int offset;
                 public Variable var;
             }
-        }        
+        }
 
         /*private void Push(string v)
         {
@@ -96,9 +96,22 @@ namespace ils
         }*/
 
 
+        private string lastMoveDestination = "";
+
         public void Mov(string destination, string source)
-        {          
+        {
+            if (asm.Last().Contains("mov"))
+            {
+                if (!string.IsNullOrEmpty(lastMoveDestination) && lastMoveDestination == destination)
+                {
+                    ReplaceLastAsm($"mov {destination}, {source}");
+                    lastMoveDestination = destination;
+                    return;
+                }
+            }
+
             AddAsm($"mov {destination}, {source}");
+            lastMoveDestination = destination;
         }
 
         private void FunctionPrologue(IRFunctionPrologue prologue)
@@ -145,16 +158,22 @@ namespace ils
             AddAsm("section .text", 0);
             AddAsm("extern printf");
 
-            Console.WriteLine('\n' + asm);
+            Console.WriteLine('\n' + string.Join("", asm));
 
-            return asm;
+            return string.Join("", asm);
         }
 
         public void AddAsm(string code, int tabsCount = 1)
         {
             string tabs = new string('\t', tabsCount);
-            asm += tabs + code + '\n';
+            asm.Add(tabs + code + '\n');
             //Console.WriteLine(tabs + code + '\n');
+        }
+
+        public void ReplaceLastAsm(string code, int tabsCount = 1)
+        {
+            string tabs = new string('\t', tabsCount);
+            asm[asm.Count - 1] = tabs + code + '\n';
         }
 
         private bool VarExists(string name)
@@ -239,7 +258,13 @@ namespace ils
                     _currentScope.GenerateStackVar(namedVar);
                     if (!namedVar.isFuncArg)
                     {
-                        Mov(GetLocation(namedVar, true, false), namedVar.value);
+                        string val = namedVar.value;
+
+                        if(namedVar.variableType == DataType.IDENTIFIER)
+                        {
+                            val = GetLocation(IRGenerator._allVariables.Values.Where(x => x.guid.ToString() == namedVar.value).First(), false, false);
+                        }
+                        Mov(GetLocation(namedVar, true, false), val);
                     }
                 }
             }
@@ -602,7 +627,8 @@ namespace ils
             }
             else if(var is FunctionReturnVariable regvar)
             {
-                return regvar.funcName + regvar.index.ToString();
+                GenerateFunctionCall(regvar.call);
+                return "rax"; // regvar.funcName + regvar.index.ToString();
             }
 
             return var.value;
