@@ -376,15 +376,18 @@ namespace ils
 
             //add return somehow 
 
-            _IR.Add(new IRFunctionCall(call.identifier.value, arguments));
-            foreach (var arg in arguments)
-            {
-                arg.needsPreservedReg = true;
-            }
-
+            IRFunctionCall ircall = new IRFunctionCall(call.identifier.value, arguments);
             if (func != null && func.returnType != DataType.VOID)
             {
-                return new FunctionReturnVariable("rax", func.returnType);
+                return new FunctionReturnVariable(func.name, func.returnType, _currentScope.localVariables.Count, ircall);
+            }
+            else
+            {
+                _IR.Add(ircall);
+                foreach (var arg in arguments)
+                {
+                    arg.needsPreservedReg = true;
+                }
             }
 
             return null;
@@ -805,7 +808,7 @@ namespace ils
                 }
                 if (val is FunctionReturnVariable regvar)
                 {
-                    SetValue(regvar.reg, val.variableType);
+                    SetValue(regvar.funcName + regvar.index.ToString(), val.variableType);
                 }
             }
 
@@ -817,22 +820,25 @@ namespace ils
 
         public class FunctionReturnVariable : Variable
         {
-            public string reg;
-
-            public FunctionReturnVariable(string reg, DataType varType)
+            public string funcName;
+            public int index;
+            public IRFunctionCall call;
+            public FunctionReturnVariable(string funcName, DataType varType, int index, IRFunctionCall call)
             {
                 Name = "FVAR";
-                this.reg = reg;
-                this.variableName = reg;
+                this.funcName = funcName;
+                this.variableName = funcName;
                 this.variableType = varType;
-                SetValue(reg, variableType);
+                this.index = index;
+                this.call = call;
+                //SetValue(reg, variableType);
 
                 _allVariables[this.guid.ToString()] = this;
             }
 
             public override string GetString()
             {
-                return $"({Name}, {reg})";
+                return $"({Name}, {variableName})";
             }
         }
 

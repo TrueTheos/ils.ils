@@ -4,9 +4,16 @@ main:
 	mov rbp, rsp
 	sub rsp, 8
 	.SCOPE_1_START:
-	mov qword [rbp-8], rax
-	push 30
-	call a
+	mov qword [rbp-8], 3cc148aa-1dd9-4993-8658-6370c17dd732
+	mov rcx, 0
+	mov rcx, 10
+	imul rcx, 2
+	mov rdx, 0
+	mov rdx, rcx
+	add rdx, 5
+	mov r8, 0
+	mov r8, rdx
+	imul r8, 3
 	mov rbx, [rbp-8]
 	mov rdi, intFormat
 	mov rsi, rbx

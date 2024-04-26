@@ -602,7 +602,7 @@ namespace ils
             }
             else if(var is FunctionReturnVariable regvar)
             {
-                return regvar.reg;
+                return regvar.funcName + regvar.index.ToString();
             }
 
             return var.value;
