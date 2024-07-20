@@ -3,13 +3,14 @@ using static System.Net.Mime.MediaTypeNames;
 
 class ILS
 {
-    const string SOURCE_FILE = "C:\\Projects\\ils.ils\\ils\\test.ils";
-    const string OUTPUT_FILE = "C:\\Projects\\ils.ils\\ils\\out.asm";
+    const string SOURCE_FILE = @"C:\Projects\ils.ils\ils\test.ils";
+    const string OUTPUT_FILE = @"C:\Projects\ils.ils\ils\out.asm";
 
     public static ASMGenerator asmGen;
+    public static IRGenerator irGen;
 
     static void Main(string[] args)
-    {
+    {                
         if (File.Exists(SOURCE_FILE))
         {
             // Read all lines from the file
@@ -37,8 +38,8 @@ class ILS
             Verificator verificator = new Verificator();
             verificator.Verify(mainScope);
 
-            IRGenerator irGenerator = new();
-            var ir = irGenerator.Generate(mainScope);
+            irGen = new();
+            var ir = irGen.Generate(mainScope);
             IROptimizer optimizer = new();
             var optimizedIR = optimizer.GetOptimizedIR(ir);
             asmGen = new();

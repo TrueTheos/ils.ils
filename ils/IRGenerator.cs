@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualBasic;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -19,6 +20,8 @@ namespace ils
         protected static Dictionary<string, NamedVariable> _globalVariables = new();
         protected static Dictionary<string, TempVariable> _tempVariables = new();
         protected static Dictionary<string, IRFunction> _functions = new();
+
+        public static Map<string, string> stringLiterals = new();
 
         public List<IRNode> _IR = new();
 
@@ -234,11 +237,27 @@ namespace ils
                 }
                 else if(statement is ASTBreak breakstmt)
                 {
-                    if(astScope.scopeType == ScopeType.LOOP)
+                    if(astScope.scopeType == ScopeType.IF)
+                    {
+                        ASTScope parentScopeOfType = GetParentScopeOfType(ScopeType.LOOP, astScope);
+
+                        if (parentScopeOfType != null)
+                        {
+                            if(parentScopeOfType.scopeType == ScopeType.LOOP)
+                            {
+                                _IR.Add(new IRJump(_scopeLabels[parentScopeOfType].endLabel.labelName, ConditionType.NONE));
+                            }
+                        }
+                        else
+                        {
+                            _IR.Add(new IRJump(scopeEnd.labelName, ConditionType.NONE));
+                        }
+                    }
+                    else if(astScope.scopeType == ScopeType.LOOP)
                     {
                         _IR.Add(new IRJump(scopeEnd.labelName, ConditionType.NONE));
                     }
-                    else
+                    /*else
                     {
                         ASTScope parentScopeOfType = GetParentScopeOfType(ScopeType.LOOP, astScope);
 
@@ -250,7 +269,7 @@ namespace ils
                         {
                             _IR.Add(new IRJump(scopeEnd.labelName, ConditionType.NONE));
                         }
-                    }
+                    }*/
                 }    
             }
 
@@ -333,6 +352,12 @@ namespace ils
         {
             IRFunction func = null;
 
+            if(call.identifier.value.StartsWith('@') && !Builtins.IsBuiltIn(call.identifier.value))
+            {
+                ErrorHandler.Custom($"Builtin function '{call.identifier.value} doesn't exist!");
+                return null;
+            }
+
             if(!_functions.ContainsKey(call.identifier.value) && !Builtins.BuiltinFunctions.Any(x => x.name == call.identifier.value))
             {
                 ErrorHandler.Custom($"Function '{call.identifier.value}' does not exist!");
@@ -361,10 +386,13 @@ namespace ils
                     tempVar.AssignVariable(arg);
                     arguments.Add(tempVar);
                 }
+                else if(arg is FunctionReturnVariable)
+                {
+                    arguments.Add(arg);
+                }
                 else
                 {
-                    LiteralVariable lit = new LiteralVariable(arg.value, arg.variableType);
-                    arguments.Add(lit);
+                    arguments.Add(arg);
                 }
            
             }
@@ -543,6 +571,7 @@ namespace ils
             }
             else if(_expression is ASTLiteral literal)
             {
+
                 return new LiteralVariable(literal.value, literal.variableType);
             }    
             else if (_expression is ASTFunctionCall funcCall)
@@ -555,6 +584,11 @@ namespace ils
 
                 Variable rightVar = ParseExpression(arithmeticOp.rightNode);
 
+                if(!VerifyOperation(leftVar.variableType, rightVar.variableType, arithmeticOp.operation))
+                {
+                    return null;
+                }
+
                 string resultName = CreateNewTempVar(DataType.INT, "0", "OP_RES");
                 TempVariable result = _tempVariables[resultName];
 
@@ -565,6 +599,20 @@ namespace ils
             }
 
             return null;
+        }
+
+        private bool VerifyOperation(DataType aType, DataType bType, ArithmeticOpType opType)
+        {
+            if(opType is (ArithmeticOpType.ADD or ArithmeticOpType.MUL or ArithmeticOpType.DIV or ArithmeticOpType.SUB or ArithmeticOpType.MOD))
+            {
+                if(aType == DataType.BOOL || bType == DataType.BOOL)
+                {
+                    ErrorHandler.Custom("You can't do arithmetic operations on bools!");
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public class IRReturn : IRNode
@@ -779,7 +827,7 @@ namespace ils
                 switch (this.variableType)  
                 {
                     case DataType.STRING:
-                        this.value = $"\"{val}\"";
+                        this.value = val;
                         break;
                     case DataType.INT:
                         this.value = val;
@@ -918,10 +966,27 @@ namespace ils
 
                 this.variableType = type;
                 //this.variableName = $"LIT_{literalVarsCount}_{value}";
-                this.variableName = value.ToString();
+                
                 literalVarsCount++;
 
-                SetValue(value, variableType);
+                if(type == DataType.STRING)
+                {
+                    if (!stringLiterals.Reverse.Contains(value))
+                    {
+                        string name = "STR_" + stringLiterals.Forward.Count.ToString();
+                        stringLiterals.Add(name, value);
+                        SetValue(name, variableType);
+                    }
+                    else
+                    {
+                        SetValue(value, variableType);
+                    }                 
+                }
+                else
+                {
+                    this.variableName = value.ToString();
+                    SetValue(value, variableType);
+                }               
 
                 _allVariables.Add(guid.ToString(), this);
             }

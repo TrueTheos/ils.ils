@@ -13,10 +13,10 @@ namespace ils
     {
         private Dictionary<int, Word> _words = new()
         {
-            { 1, new Word(){ shortName = Word.ShortName.db} },
-            { 2, new Word(){ shortName = Word.ShortName.dw} },
-            { 4, new Word(){ shortName = Word.ShortName.dd} },
-            { 8, new Word(){ shortName = Word.ShortName.dq} }
+            { 1, new Word(){ shortName = Word.ShortName.db, longName = "byte"} },
+            { 2, new Word(){ shortName = Word.ShortName.dw, longName = "word"} },
+            { 4, new Word(){ shortName = Word.ShortName.dd, longName = "dword"} },
+            { 8, new Word(){ shortName = Word.ShortName.dq, longName = "qword"} }
         };
 
         private readonly List<Register> _regs =
@@ -145,18 +145,33 @@ namespace ils
             }
 
             AddAsm("section .data", 0);
-            AddAsm("strFormat db \"%s\", 10, 0");
-            AddAsm("intFormat db \"%d\", 10, 0");
-            AddAsm("charFormat db \"%c\", 10, 0"); 
+            AddAsm("strFormat db \"%s\", 0");
+            AddAsm("intFormat db \"%d\", 0");
+            AddAsm("charFormat db \"%c\", 0");
+
+            AddAsm("strFormatNl db \"%s\", 10, 0");
+            AddAsm("intFormatNl db \"%d\", 10, 0");
+            AddAsm("charFormatNl db \"%c\", 10, 0");
+
+            if (stringLiterals.Forward.Count > 0)
+            {
+                foreach (var strlit in stringLiterals.Forward.GetDictionary())
+                {
+                    AddAsm($"{strlit.Key} db `{strlit.Value}`");
+                }
+            }
 
             foreach (var data in _dataSection)
             {
-                AddAsm($"{data.Value.name}:", 0);
-                AddAsm($"{data.Value.word.shortName} {data.Value.var.value}");
+                AddAsm($"{data.Value.name} {data.Value.word.shortName} {data.Value.var.value}");
             }
 
             AddAsm("section .text", 0);
-            AddAsm("extern printf");
+
+            foreach (LibcFunction libcFunc in BuiltinFunctions.Where(x => x is LibcFunction libc && !string.IsNullOrEmpty(libc.libcName)))
+            {
+                AddAsm($"extern {libcFunc.libcName}");
+            }    
 
             Console.WriteLine('\n' + string.Join("", asm));
 
@@ -204,7 +219,7 @@ namespace ils
                 args.Reverse();
                 foreach (var argument in args)
                 {
-                    AddAsm($"push {GetLocation(argument, false, false)}");
+                    AddAsm($"push {GetLocation(argument, GetLocationUseCase.None, false)}");
                 }
                 AddAsm($"call {func.name}");
             }
@@ -236,7 +251,7 @@ namespace ils
                             _dataSection.Add(namedVar.variableName, new ReservedVariable()
                             {
                                 name = namedVar.variableName,
-                                word = _words[4],
+                                word = _words[8],
                                 var = namedVar
                             });
                             break;
@@ -249,7 +264,12 @@ namespace ils
                             });
                             break;
                         case DataType.STRING:
-                            //todo
+                            _dataSection.Add(namedVar.variableName, new ReservedVariable()
+                            {
+                                name = namedVar.variableName,
+                                word = _words[8],
+                                var = namedVar
+                            });
                             break;
                     }
                 }
@@ -262,9 +282,9 @@ namespace ils
 
                         if(namedVar.variableType == DataType.IDENTIFIER)
                         {
-                            val = GetLocation(IRGenerator._allVariables.Values.Where(x => x.guid.ToString() == namedVar.value).First(), false, false);
+                            val = GetLocation(IRGenerator._allVariables.Values.Where(x => x.guid.ToString() == namedVar.value).First(), GetLocationUseCase.None, false);
                         }
-                        Mov(GetLocation(namedVar, true, false), val);
+                        Mov(GetLocation(namedVar, GetLocationUseCase.MovedTo, false), val);
                     }
                 }
             }
@@ -303,7 +323,7 @@ namespace ils
                     Mov(reg.name, var.value);
                     break;
                 case DataType.IDENTIFIER:
-                    string val = GetLocation(IRGenerator._allVariables[var.value], false, false);                   
+                    string val = GetLocation(IRGenerator._allVariables[var.value], GetLocationUseCase.None, false);                   
                     Mov(reg.name, val);
                     break;
             }
@@ -311,7 +331,7 @@ namespace ils
 
         private void GenerateAssign(IRAssign asign)
         {
-            string location = GetLocation(asign.identifier, true, false);
+            string location = GetLocation(asign.identifier, GetLocationUseCase.MovedTo, false);
             string val = asign.value;
 
             switch (asign.assignedType)
@@ -329,7 +349,7 @@ namespace ils
                     // AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
                     break;
                 case DataType.IDENTIFIER:
-                    val = GetLocation(IRGenerator._allVariables.Values.Where(x => x.variableName == asign.value).First(), false, false);
+                    val = GetLocation(IRGenerator._allVariables.Values.Where(x => x.variableName == asign.value).First(), GetLocationUseCase.None, false);
                     if (val.Contains("rbp"))
                     {
                         Register reg = _availableRegs.Dequeue();
@@ -351,10 +371,10 @@ namespace ils
 
         private void GenerateArithmeticOP(IRArithmeticOp arop)
         {
-            string location = GetLocation(arop.resultLocation, true, false);
+            string location = GetLocation(arop.resultLocation, GetLocationUseCase.MovedTo, false);
 
-            string a = GetLocation(arop.a, false, false);
-            string b = GetLocation(arop.b, false, false);
+            string a = GetLocation(arop.a, GetLocationUseCase.None, false);
+            string b = GetLocation(arop.b, GetLocationUseCase.None, false);
 
             switch (arop.opType)
             {
@@ -409,14 +429,14 @@ namespace ils
             Register aReg;
             Register bReg;
 
-            string compareA = GetLocation(compare.a, false, true);
-            string compareB = GetLocation(compare.b, false, false);
+            string compareA = GetLocation(compare.a, GetLocationUseCase.ComparedTo, true);
+            string compareB = GetLocation(compare.b, GetLocationUseCase.None, false);
 
             if (compare.a is NamedVariable namedA)
             {
                 if(namedA.isGlobal)
                 {
-                    switch (compare.a.variableType)
+                    /*switch (compare.a.variableType)
                     {
                         case DataType.STRING:
                             sizeA = "byte ";
@@ -433,7 +453,7 @@ namespace ils
                         case DataType.IDENTIFIER:
                             sizeA = "qword ";
                             break;
-                    }
+                    }*/
                 }
                 else
                 {
@@ -514,7 +534,7 @@ namespace ils
 
         private void GenerateReturn(IRReturn ret)
         {
-            Mov("rax", GetLocation(ret.ret, false, false));
+            Mov("rax", GetLocation(ret.ret, GetLocationUseCase.None, false));
         }
 
         private void GenerateScopeStart(IRScopeStart start)
@@ -559,7 +579,9 @@ namespace ils
             if (node is IRScopeEnd end) { GenerateScopeEnd(end); }
         }
 
-        public string GetLocation(Variable var, bool isMovedTo, bool generateLiteral)
+        public enum GetLocationUseCase {None, MovedTo, ComparedTo}
+
+        public string GetLocation(Variable var, GetLocationUseCase useCase, bool generateLiteral)
         {
             if(var is TempVariable temp)
             {
@@ -578,7 +600,11 @@ namespace ils
             {
                 if(namedVar.isGlobal)
                 {
-                    return $"[{_dataSection[namedVar.variableName].name}]";
+                    if(useCase == GetLocationUseCase.ComparedTo || useCase == GetLocationUseCase.MovedTo)
+                    {
+                        return $"{_dataSection[namedVar.variableName].word.longName} [{_dataSection[namedVar.variableName].name}]";
+                    }
+                    return $"{_dataSection[namedVar.variableName].name}";
                 }
                 else
                 {
@@ -589,7 +615,7 @@ namespace ils
 
                     if (namedVar.isFuncArg)
                     {
-                        if (isMovedTo)
+                        if (useCase == GetLocationUseCase.ComparedTo || useCase == GetLocationUseCase.MovedTo)
                         {
                             return $"qword [rbp+{16 + _currentScope.stackvars[namedVar.guid.ToString()].offset * 8}]";
                         }
@@ -602,7 +628,7 @@ namespace ils
                     {
                         int offset = _currentScope.stackvars[namedVar.guid.ToString()].offset * 8;
                         if (offset == 0) offset = 8;
-                        if (isMovedTo)
+                        if (useCase == GetLocationUseCase.ComparedTo || useCase == GetLocationUseCase.MovedTo)
                         {
                             return $"qword [rbp-{offset}]";
                         }
@@ -615,6 +641,11 @@ namespace ils
             }         
             else if(var is LiteralVariable lit && generateLiteral)
             {
+                if(lit.variableType == DataType.STRING)
+                {
+                    return $"[{lit.value}]";
+                }
+
                 if (_usedRegs.Forward.TryGet(lit.variableName, out Register val))
                 {
                     return val.name;
@@ -638,6 +669,7 @@ namespace ils
         {
             public enum ShortName { db, dw, dd, dq}
             public ShortName shortName;
+            public string longName;
         }
 
         public struct ReservedVariable

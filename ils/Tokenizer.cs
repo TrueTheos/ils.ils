@@ -35,7 +35,7 @@ namespace ils
             while(CanPeek())
             {
                 char nextChar = Peek();
-                if(char.IsLetter(nextChar))
+                if(IsValidStartChar(nextChar))
                 {
                     buffer += Consume();
 
@@ -111,7 +111,7 @@ namespace ils
                     }
                     else if(Previous(TokenType.QUOTATION)) 
                     {
-                        while(CanPeek() && char.IsLetterOrDigit(Peek()))
+                        while(CanPeek() && Peek() != '"')
                         {
                             buffer += Consume();
                         }
@@ -133,7 +133,7 @@ namespace ils
                         }
                         else
                         {
-                            ErrorHandler.Expected("char", null);
+                            ErrorHandler.Throw(new ExpectedError("char", null, lineCount));
                         }
                     }
                     else
@@ -347,6 +347,15 @@ namespace ils
         private bool Expect(string next)
         {
             return _index + next.Length < _source.Length && _source.Substring(_index, next.Length) == next;
+        }
+
+        private bool IsValidStartChar(char c)
+        {
+            if (char.IsDigit(c)) return false;
+            if(char.IsLetter(c)) return true;
+            if (c == '_' || c == '@') return true;
+
+            return false;
         }
     }
 }

@@ -1,11 +1,16 @@
+s: bool = true;
+limit: int = 10;
+
 fun main() -> int
 {
-	z: int = a(30) * 2 + a(15);
-	println(z);
+	while(s == true)
+	{ 
+		if(limit < 0)
+		{
+			break;
+		}
+		@println(limit);
+		limit = limit - 1;
+	}
 	return 0;
-}
-
-fun a(limit: int) -> int
-{
-	return limit;
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -39,6 +40,10 @@ namespace ils
             {
                 return _dictionary.TryGetValue(key, out o);
             }
+
+            public Dictionary<T3, T4> GetDictionary() => _dictionary;
+            
+            public int Count => _dictionary.Count;
         }
 
         public void Add(T1 t1, T2 t2)

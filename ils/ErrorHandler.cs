@@ -18,9 +18,36 @@ namespace ils
             Log(message);
         }
 
-        public static void Expected(string message, Token token) 
+        public static void Throw(CustomError error) 
         {
-            Log($"[{token.line}] Expected '{message}' but received '{token.value}'!");
+            Log(error.Throw());
+        }
+    }
+
+    public abstract class CustomError
+    {
+        public int id;
+        public string name;
+        public int line;
+
+        public CustomError(int _id, string _name, int _line) { }
+
+        public abstract string Throw();
+    }
+
+    public class ExpectedError : CustomError
+    {
+        private string _expected;
+        private Token _received;
+
+        public ExpectedError(string expected, Token received, int line) : base(1, "ExpectedError", line)
+        {
+            _expected = expected;
+            _received = received;
+        }
+        public override string Throw()
+        {
+            return $"[{line}] {name}: expected '{_expected}' but received '{_received.value}'";
         }
     }
 }

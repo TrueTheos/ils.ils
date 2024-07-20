@@ -11,9 +11,15 @@ namespace ils
     {
         public static List<BuiltinFunction> BuiltinFunctions = new()
         {
-            new PrintFunc(),
-            new ExitFunc()
+            new PrintlnFunc(),
+            new ExitFunc(),
+            new PrintFunc()
         };
+
+        public static bool IsBuiltIn(string name)
+        {
+            return BuiltinFunctions.Any(x => x.name == name);
+        }
 
         public abstract class BuiltinFunction
         {
@@ -55,7 +61,7 @@ namespace ils
         {
             public ExitFunc() : base
                 (
-                    "exit",
+                    "@exit",
                     [null],
                     ""
                 )
@@ -79,7 +85,7 @@ namespace ils
                 }
                 else
                 {
-                    ILS.asmGen.Mov("rdi", ILS.asmGen.GetLocation(arg, false, false));
+                    ILS.asmGen.Mov("rdi", ILS.asmGen.GetLocation(arg,  ASMGenerator.GetLocationUseCase.None, false));
                 }
 
 
@@ -87,11 +93,11 @@ namespace ils
             }
         }
 
-        public class PrintFunc : LibcFunction
+        public class PrintlnFunc : LibcFunction
         {
-            public PrintFunc() : base
+            public PrintlnFunc() : base
                 (
-                    "println",
+                    "@println",
                     [null],
                     "printf"
                 )
@@ -102,13 +108,13 @@ namespace ils
                 switch (var.variableType)
                 {
                     case DataType.STRING:
-                        return "strFormat";
+                        return "strFormatNl";
                     case DataType.INT:
-                        return "intFormat";
+                        return "intFormatNl";
                     case DataType.CHAR:
-                        return "charFormat";
+                        return "charFormatNl";
                     case DataType.BOOL:
-                        return "intFormat";
+                        return "intFormatNl";
                     case DataType.IDENTIFIER:
                         return GetFormat(IRGenerator._allVariables[var.value]);
                 }
@@ -126,8 +132,58 @@ namespace ils
 
                 ILS.asmGen.Mov("rdi", format);
 
-                ILS.asmGen.Mov("rsi", ILS.asmGen.GetLocation(msg, false , false));
+                ILS.asmGen.Mov("rsi", ILS.asmGen.GetLocation(msg, ASMGenerator.GetLocationUseCase.None, false));
 
+                ILS.asmGen.Mov("rax", "0");
+
+                ILS.asmGen.AddAsm($"call {libcName}");
+            }
+        }
+
+        public class PrintFunc : LibcFunction
+        {
+            public PrintFunc() : base
+                (
+                    "@print",
+                    [null],
+                    "puts"
+                )
+            { }
+
+            /*private string GetFormat(Variable var)
+            {
+                switch (var.variableType)
+                {
+                    case DataType.STRING:
+                        return "strFormat";
+                    case DataType.INT:
+                        return "intFormat";
+                    case DataType.CHAR:
+                        return "charFormat";
+                    case DataType.BOOL:
+                        return "intFormat";
+                    case DataType.IDENTIFIER:
+                        return GetFormat(IRGenerator._allVariables[var.value]);
+                }
+
+                return "broke";
+            }*/
+
+            public override void GenerateASM(List<Variable> arguments)
+            {
+                //string format = "";
+
+                Variable msg = arguments[0];
+
+                //format = GetFormat(msg);
+
+                //ILS.asmGen.Mov("rdi", format);
+
+                //ILS.asmGen.Mov("rsi", ILS.asmGen.GetLocation(msg, false, false));
+
+                //ILS.asmGen.Mov("rax", "0");
+
+                ILS.asmGen.Mov("rdi", ILS.asmGen.GetLocation(msg, ASMGenerator.GetLocationUseCase.None, false));
                 ILS.asmGen.Mov("rax", "0");
 
                 ILS.asmGen.AddAsm($"call {libcName}");
