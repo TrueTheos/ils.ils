@@ -77,15 +77,24 @@ namespace ils
                     default: ErrorHandler.Custom($"Function '{name}' rquires int as argument!"); break;
                 }
 
-                ILS.asmGen.Mov("rax", "60");
+                ILS.asmGen.AutoMov(
+                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rax},
+                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.value, value = "60"}
+                    );
 
                 if (arg is LiteralVariable)
                 {
-                    ILS.asmGen.Mov("rdi", arg.value);
+                    ILS.asmGen.AutoMov(
+                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rdi },
+                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.value, value = arg.value }
+                    );
                 }
                 else
                 {
-                    ILS.asmGen.Mov("rdi", ILS.asmGen.GetLocation(arg,  ASMGenerator.GetLocationUseCase.None, false));
+                    ILS.asmGen.AutoMov(
+                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rdi },
+                    ILS.asmGen.GetLocation(arg, ASMGenerator.GetLocationUseCase.None, false)
+                    );
                 }
 
 
@@ -130,11 +139,20 @@ namespace ils
 
                 format = GetFormat(msg);
 
-                ILS.asmGen.Mov("rdi", format);
+                ILS.asmGen.AutoMov(
+                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rdi },
+                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.value, value = format }
+                    );
 
-                ILS.asmGen.Mov("rsi", ILS.asmGen.GetLocation(msg, ASMGenerator.GetLocationUseCase.None, false));
+                ILS.asmGen.AutoMov(
+                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rsi },
+                    ILS.asmGen.GetLocation(msg, ASMGenerator.GetLocationUseCase.None, false)
+                    );
 
-                ILS.asmGen.Mov("rax", "0");
+                ILS.asmGen.AutoMov(
+                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rax },
+                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.value, value = "0" }
+                    );
 
                 ILS.asmGen.AddAsm($"call {libcName}");
             }
@@ -183,8 +201,15 @@ namespace ils
 
                 //ILS.asmGen.Mov("rax", "0");
 
-                ILS.asmGen.Mov("rdi", ILS.asmGen.GetLocation(msg, ASMGenerator.GetLocationUseCase.None, false));
-                ILS.asmGen.Mov("rax", "0");
+                ILS.asmGen.AutoMov(
+                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rdi },
+                    ILS.asmGen.GetLocation(msg, ASMGenerator.GetLocationUseCase.None, false)
+                    );
+
+                ILS.asmGen.AutoMov(
+                   new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rax },
+                   new ASMGenerator.Address() { type = ASMGenerator.Address.Type.value, value = "0" }
+                   );
 
                 ILS.asmGen.AddAsm($"call {libcName}");
             }

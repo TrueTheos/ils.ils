@@ -13,14 +13,15 @@ main:
 	jmp .SCOPE_2_END
 	.SCOPE_3_END:
 	.IF_8:
-	mov rbx, limit
+	mov rbx, [limit]
 	mov rdi, intFormatNl
 	mov rsi, rbx
 	mov rax, 0
 	call printf
-	mov r12, limit
-	sub r12, 1
-	mov qword [limit], r12
+	mov r8, 0
+	mov r8, [limit]
+	sub r8, 1
+	mov qword [limit], r8
 	.SCOPE_2_END:
 	jmp .WHILE_4_START
 	.WHILE_4_END:
