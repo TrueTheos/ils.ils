@@ -223,7 +223,8 @@ namespace ils
                         }
                         if (var is FunctionReturnVariable regVar)
                         {
-                            _IR.Add(new IRAssign(saveLocation, regVar.value.ToString(), regVar.variableType));
+                            //_IR.Add(new IRAssign(saveLocation, regVar.value.ToString(), regVar.variableType));
+                            _IR.Add(new IRAssign(saveLocation, regVar.variableName, DataType.IDENTIFIER));
                         }
                     }
                 }

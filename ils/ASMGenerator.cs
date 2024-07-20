@@ -321,7 +321,7 @@ namespace ils
                 args.Reverse();
                 foreach (var argument in args)
                 {
-                    AddAsm($"push {GetLocation(argument, GetLocationUseCase.None, false)}");
+                    AddAsm($"push {GetValueFromAddress(GetLocation(argument, GetLocationUseCase.None, false))}");
                 }
                 AddAsm($"call {func.name}");
             }
