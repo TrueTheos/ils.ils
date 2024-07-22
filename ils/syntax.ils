@@ -10,7 +10,7 @@ letter: char = 'c';
 word: str = "word";
 boolean: bool = true; // false
 
-arrat: [int] = {10,5};
+array: [int] = {10,5};
 arraySize: [int, 5]; // {0,0,0,0,0} 
 
 fun power(x: int) -> int {

@@ -30,7 +30,12 @@ namespace ils
         public string name;
         public int line;
 
-        public CustomError(int _id, string _name, int _line) { }
+        public CustomError(int _id, string _name, int _line)
+        {
+            id = _id;
+            name = _name;
+            line = _line;
+        }
 
         public abstract string Throw();
     }

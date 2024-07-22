@@ -257,6 +257,16 @@ namespace ils
                     Consume();
                     _tokens.Add(new(TokenType.CLOSE_CURLY, lineCount, buffer));
                 }
+                else if (Expect("["))
+                {
+                    Consume();
+                    _tokens.Add(new(TokenType.OPEN_SQUARE, lineCount, buffer));
+                }
+                else if (Expect("]"))
+                {
+                    Consume();
+                    _tokens.Add(new(TokenType.CLOSE_SQUARE, lineCount, buffer));
+                }
                 else if(Expect(":"))
                 {
                     Consume();

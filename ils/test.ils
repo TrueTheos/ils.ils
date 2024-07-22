@@ -1,21 +1,15 @@
-s: bool = true;
 limit: int = 1;
 
-fun add(a: int, b: int) -> int
+fun test()
 {
-	return a + b;
+	
 }
 
 fun main() -> int
 {
-	while(s == true)
-	{ 
-		if(limit > 100)
-		{
-			break;
-		}
-		@println(limit);
-		limit = add(limit, limit);
+	while(true)
+	{
+		@println('x');
 	}
 	return 0;
 }

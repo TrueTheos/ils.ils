@@ -27,6 +27,8 @@ namespace ils
         CLOSE_PARENTHESIS, // )
         OPEN_CURLY, // {
         CLOSE_CURLY, // }
+        OPEN_SQUARE, // [
+        CLOSE_SQUARE, // ]
 
         LITERAL_STR,
         LITERAL_INT,

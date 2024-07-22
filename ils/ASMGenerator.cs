@@ -275,7 +275,7 @@ namespace ils
                 AddAsm($"extern {libcFunc.libcName}");
             }    
 
-            Console.WriteLine('\n' + string.Join("", asm));
+            //Console.WriteLine('\n' + string.Join("", asm));
 
             return string.Join("", asm);
         }
@@ -303,6 +303,11 @@ namespace ils
             AddAsm($"{func.name}:", 0);
 
             _currentFunc = func;
+            /*foreach (var node in func.nodes)
+            {
+                if (node is IRFunction) continue;
+                GenerateIRNode(node);
+            }      */
         }
 
         private void GenerateFunctionCall(IRFunctionCall func)
@@ -670,15 +675,6 @@ namespace ils
 
         private void GenerateScopeEnd(IRScopeEnd end)
         {
-            /*if(end.valuesToClear != 0)
-            {
-                AddAsm($"ret {end.valuesToClear * 8}");
-            }
-            else
-            {
-                AddAsm($"ret");
-            }*/
-
             AddAsm($"ret");
         }
 

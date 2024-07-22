@@ -428,8 +428,93 @@
             return new ASTFunctionCall(identifier, arguments);
         }
 
+        private ASTArrayDeclaration ParseArrayDeclaration()
+        {
+            Token identifier = Consume();
+            TryConsumeErr(TokenType.COLON);
+            TryConsumeErr(TokenType.OPEN_SQUARE);
+
+            Token elementType = Consume();
+            if (!IsValidElementType(elementType.tokenType))
+            {
+                ErrorHandler.Throw(new ExpectedError("valid array element type", elementType, elementType.line));
+                return null;
+            }
+
+            ASTExpression sizeExpression = null;
+            List<ASTExpression> initialValues = null;
+
+            if (TryConsume(TokenType.COMMA) != null)
+            {
+                sizeExpression = ParseExpression();
+            }
+
+            TryConsumeErr(TokenType.CLOSE_SQUARE);
+
+            if (TryConsume(TokenType.ASSIGN) != null)
+            {
+                TryConsumeErr(TokenType.OPEN_CURLY);
+                initialValues = new List<ASTExpression>();
+
+                while (!Expect(TokenType.CLOSE_CURLY))
+                {
+                    ASTExpression value = ParseExpression();
+                    if (value == null)
+                    {
+                        ErrorHandler.Throw(new ExpectedError("expression", Peek(), Peek().line));
+                        return null;
+                    }
+
+                    if (!IsValidElementValue(elementType.tokenType, value))
+                    {
+                        ErrorHandler.Throw(new ExpectedError($"{elementType.tokenType.ToString().ToLower()} value", Peek(), Peek().line));
+                        return null;
+                    }
+
+                    initialValues.Add(value);
+
+                    if (TryConsume(TokenType.COMMA) == null)
+                    {
+                        break;
+                    }
+                }
+
+                TryConsumeErr(TokenType.CLOSE_CURLY);
+            }
+
+            TryConsumeErr(TokenType.SEMICOLON);
+
+            if (sizeExpression == null && initialValues != null)
+            {
+                sizeExpression = new ASTIntLiteral(initialValues.Count.ToString());
+            }
+
+            variables.Add((identifier.value, identifier.line));
+            return new ASTArrayDeclaration(identifier, elementType.tokenType, sizeExpression, initialValues);
+        }
+
+        private bool IsValidElementType(TokenType type)
+        {
+            return type == TokenType.TYPE_INT || type == TokenType.TYPE_STRING ||
+                   type == TokenType.TYPE_CHAR || type == TokenType.TYPE_BOOLEAN;
+        }
+
+        private bool IsValidElementValue(TokenType expectedType, ASTExpression value)
+        {
+            return (expectedType == TokenType.TYPE_INT && value is ASTIntLiteral) ||
+                   (expectedType == TokenType.TYPE_STRING && value is ASTStringLiteral) ||
+                   (expectedType == TokenType.TYPE_CHAR && value is ASTCharLiteral) ||
+                   (expectedType == TokenType.TYPE_BOOLEAN && value is ASTBoolLiteral) ||
+                   value is ASTIdentifier || value is ASTFunctionCall;
+        }
+
         private ASTStatement ParseStatement()
         {
+            if (Expect(TokenType.IDENTIFIER) && Expect(TokenType.COLON, 1) && Expect(TokenType.OPEN_SQUARE, 2))
+            {
+                return ParseArrayDeclaration();
+            }
+
             if (Expect(TokenType.IDENTIFIER))
             {
                 if (Expect(TokenType.COLON, 1))

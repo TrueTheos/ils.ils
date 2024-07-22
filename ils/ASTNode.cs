@@ -19,7 +19,7 @@ namespace ils
 
     public abstract class ASTExpression : ASTStatement { }
 
-    public enum ScopeType { DEFAULT, IF, LOOP, FUNCTION }
+    public enum ScopeType { DEFAULT, IF, ELIF, ELSE, LOOP, FUNCTION }
     public class ASTScope(List<ASTStatement> statements, ASTScope parentScope, ScopeType scopeType) : ASTStatement
     {
         public List<ASTStatement> statements = statements;
@@ -204,4 +204,19 @@ namespace ils
         }
     }
 
+    public class ASTArrayDeclaration : ASTStatement
+    {
+        public Token name;
+        public TokenType elementType;
+        public ASTExpression sizeExpression;
+        public List<ASTExpression> initialValues;
+
+        public ASTArrayDeclaration(Token name, TokenType elementType, ASTExpression sizeExpression, List<ASTExpression> initialValues)
+        {
+            this.name = name;
+            this.elementType = elementType;
+            this.sizeExpression = sizeExpression;
+            this.initialValues = initialValues;
+        }
+    }
 }
