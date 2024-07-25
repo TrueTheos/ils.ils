@@ -8,8 +8,9 @@ main:
 	cmp rcx, 1
 	jne .WHILE_6_END
 	.LOOP_3_START:
-	mov rdi, charFormatNl
-	mov rsi, 120
+	mov rbx, [xd]
+	mov rdi, strFormatNl
+	mov rsi, rbx
 	mov rax, 0
 	call printf
 	.LOOP_3_END:
@@ -28,7 +29,9 @@ section .data
 	strFormatNl db "%s", 10, 0
 	intFormatNl db "%d", 10, 0
 	charFormatNl db "%c", 10, 0
+	STR_0 db `XTDD`
 	limit dq 1
+	xd dq STR_0
 section .text
 	extern printf
 	extern puts

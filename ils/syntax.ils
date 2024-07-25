@@ -3,6 +3,8 @@
     Block comment
 */
 
+prolog stuff - do this at the end of the scope
+
 @builtIn
 
 number: int = 10;

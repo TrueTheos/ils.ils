@@ -55,4 +55,19 @@ namespace ils
             return $"[{line}] {name}: expected '{_expected}' but received '{_received.value}'";
         }
     }
+
+    public class NotExistingType : CustomError
+    {
+        private string _providedType;
+
+        public NotExistingType(string providedType, int line) : base(2, "NotExistingType", line)
+        {
+            _providedType = providedType;
+        }
+
+        public override string Throw()
+        {
+            return $"[line] {_providedType} is a wrong type!";
+        }
+    }
 }

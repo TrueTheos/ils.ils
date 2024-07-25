@@ -1,4 +1,5 @@
 limit: int = 1;
+xd: str = "XTDD";
 
 fun test()
 {
@@ -9,7 +10,7 @@ fun main() -> int
 {
 	while(true)
 	{
-		@println('x');
+		@println(xd);
 	}
 	return 0;
 }

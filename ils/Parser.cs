@@ -317,7 +317,7 @@
                 case TokenType.TYPE_INT:
                     break;
                 default:
-                    ErrorHandler.Throw(new ExpectedError("variable type", variableType, variableType.line));
+                    ErrorHandler.Throw(new NotExistingType(variableType.value, variableType.line));                
                     break;
             }
 
