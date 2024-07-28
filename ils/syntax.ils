@@ -7,6 +7,11 @@ prolog stuff - do this at the end of the scope
 
 @builtIn
 
+i++;
+i--;
+
+&& || 
+
 number: int = 10;
 letter: char = 'c';
 word: str = "word";
@@ -39,6 +44,12 @@ enum Status {
     finished,
     totest
 }
+
+for(array; value){}
+
+for(array[0..1]; value){}
+
+for(array[2..0]; value){}
 
 currentStatus: Status = Status.planned;
 

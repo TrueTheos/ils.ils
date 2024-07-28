@@ -344,7 +344,7 @@ namespace ils
                         return;
                     }
 
-                    switch (namedVar.variableType)
+                    switch (namedVar.variableType.DataType)
                     {
                         case DataType.CHAR:
                             _dataSection.Add(namedVar.variableName, new ReservedVariable()
@@ -378,6 +378,9 @@ namespace ils
                                 var = namedVar
                             });
                             break;
+                        case DataType.ARRAY:
+                            //todo implement
+                            break;
                     }
                 }
                 else
@@ -387,7 +390,7 @@ namespace ils
                     {
                         string val = namedVar.value;
 
-                        if (namedVar.variableType == DataType.IDENTIFIER)
+                        if (namedVar.variableType.DataType == DataType.IDENTIFIER)
                         {
                             AutoMov(
                                 GetLocation(namedVar, GetLocationUseCase.MovedTo, false),
@@ -421,7 +424,7 @@ namespace ils
             _usedRegs.Add(var.variableName, reg);
 
 
-            switch (var.variableType)
+            switch (var.variableType.DataType)
             {
                 case DataType.STRING:
                     Console.WriteLine("TODO 179");
@@ -450,6 +453,9 @@ namespace ils
                        GetLocation(IRGenerator._allVariables[var.value], GetLocationUseCase.None, false)
                        );
                     break;
+                case DataType.ARRAY:
+                    //todo implement
+                    break;
             }
         }
 
@@ -459,7 +465,7 @@ namespace ils
             Address val = new Address() { type = Address.Type.value, value = asign.value } ;
             //todo tutaj albo memory albo value, idk
 
-            switch (asign.assignedType)
+            switch (asign.assignedType.DataType)
             {
                 case DataType.STRING:
                     //todo
@@ -488,6 +494,9 @@ namespace ils
                         val = $"[{var.var.variableName}]"; 
                     }
                     else val = _usedRegs[asign.value].name;*/
+                    break;
+                case DataType.ARRAY:
+                    //todo implement
                     break;
             }
 
@@ -598,7 +607,7 @@ namespace ils
             {
                 if (namedB.isGlobal)
                 {
-                    switch (compare.b.variableType)
+                    switch (compare.b.variableType.DataType)
                     {
                         case DataType.STRING:
                             sizeB = "byte ";
@@ -614,6 +623,9 @@ namespace ils
                             break;
                         case DataType.IDENTIFIER:
                             sizeB = "qword ";
+                            break;
+                        case DataType.ARRAY:
+                            //todo implement;
                             break;
                     }
                 }
@@ -808,7 +820,7 @@ namespace ils
             }
             else if (var is LiteralVariable lit && generateLiteral)
             {
-                if (lit.variableType == DataType.STRING)
+                if (lit.variableType.DataType == DataType.STRING)
                 {
                     return new Address()
                     {

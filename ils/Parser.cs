@@ -1,4 +1,6 @@
-﻿namespace ils
+﻿using static ils.TypeSystem;
+
+namespace ils
 {
     public class Parser
     {
@@ -27,14 +29,14 @@
                 }
                 else
                 {
-                    ErrorHandler.Throw(new ExpectedError("statement", Peek(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("statement", Peek().tokenType.ToString(), Peek().line));
                     return null;
                 }
             }
 
             Verificator.CheckKeywordUsage(variables);
 
-            _mainScope.statements = _statements;
+            _mainScope.Statements = _statements;
             return _mainScope;
         }
 
@@ -93,7 +95,7 @@
                 ASTExpression expr = ParseExpression();
                 if (expr == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("expression", Peek(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("expression", Peek().tokenType.ToString(), Peek().line));
                     return null;
                 }
                 TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
@@ -147,7 +149,7 @@
 
                 if (rightNode == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("expression", nextToken, nextToken.line));
+                    ErrorHandler.Throw(new ExpectedError("expression", nextToken.tokenType.ToString(), nextToken.line));
                     return null;
                 }
 
@@ -178,7 +180,7 @@
 
             TryConsumeErr(TokenType.CLOSE_CURLY);
 
-            scope.statements = statements;
+            scope.Statements = statements;
             _currentScope = parentScope;
             return scope;
         }
@@ -191,7 +193,7 @@
 
             if (leftNode == null)
             {
-                ErrorHandler.Throw(new ExpectedError("condition", Peek(), Peek().line));
+                ErrorHandler.Throw(new ExpectedError("condition", Peek().tokenType.ToString(), Peek().line));
                 return null;
             }
 
@@ -206,7 +208,7 @@
 
                 if (rightNode == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("condition", Peek(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("condition", Peek().tokenType.ToString(), Peek().line));
                     return null;
                 }
 
@@ -230,7 +232,7 @@
 
                 if (cond == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("condition", Peek(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("condition", Peek().tokenType.ToString(), Peek().line));
                     return null;
                 }
 
@@ -238,7 +240,7 @@
 
                 if (scope == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("scope", Peek(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("scope", Peek().tokenType.ToString(), Peek().line));
                     return null;
                 }
 
@@ -252,7 +254,7 @@
 
                 if (scope == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("scope", Peek(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("scope", Peek().tokenType.ToString(), Peek().line));
                     return null;
                 }
 
@@ -265,7 +267,7 @@
         private ASTFunction ParseFunction()
         {
             Token identifier = TryConsumeErr(TokenType.IDENTIFIER);
-            Token variableType = null;
+            TypeSystem.Type variableType = null;
             TryConsumeErr(TokenType.OPEN_PARENTHESIS);
 
             List<ASTVariableDeclaration> parameters = new();
@@ -277,7 +279,11 @@
 
             TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
 
-            if (TryConsume(TokenType.RETURN_TYPE) != null)
+            if(TryConsume(TokenType.RETURN_TYPE) != null)
+            {
+                variableType = ConsumeType();
+            }
+            /*if (TryConsume(TokenType.RETURN_TYPE) != null)
             {
                 variableType = Consume();
 
@@ -286,94 +292,124 @@
                     case TokenType.TYPE_STRING:
                     case TokenType.TYPE_CHAR:
                     case TokenType.TYPE_BOOLEAN:
-                    case TokenType.TYPE_INT:
+                    case TokenType.TYPE_INT:      
                         break;
                     default:
-                        ErrorHandler.Throw(new ExpectedError("return type", variableType, variableType.line));
+                        ErrorHandler.Throw(new ExpectedError("return type", variableType.tokenType.ToString(), variableType.line));
                         break;
                 }
-            }
+            }*/
 
             ASTScope scope = ParseScope(_currentScope, ScopeType.FUNCTION);
 
-            if(variableType != null && scope.GetStatementsOfType<ASTReturn>().Count == 0)
+            if(variableType != null && scope.GetStatementsOfType<ASTReturn>().ToList().Count == 0)
             {
                 ErrorHandler.Custom($"Function '{identifier.value}' doesn't return a value!");
             }
+
             return new ASTFunction(identifier, parameters, variableType, scope, variableType != null ? scope.GetStatementsOfType<ASTReturn>().Last() : null);
+        }
+
+        public TypeSystem.Type ConsumeType()
+        {
+            Token firsToken = Consume();
+            if (firsToken.tokenType == TokenType.TYPE_INT) return TypeSystem.Types[DataType.INT];
+            if (firsToken.tokenType == TokenType.TYPE_BOOLEAN) return TypeSystem.Types[DataType.BOOL];
+            if (firsToken.tokenType == TokenType.TYPE_STRING) return TypeSystem.Types[DataType.STRING];
+            if (firsToken.tokenType == TokenType.TYPE_CHAR) return TypeSystem.Types[DataType.CHAR];
+
+            if(firsToken.tokenType == TokenType.OPEN_SQUARE)
+            {
+                Token elementType = Consume();
+                if (!IsValidElementType(elementType.tokenType))
+                {
+                    ErrorHandler.Throw(new ExpectedError("valid array element type", elementType.tokenType.ToString(), elementType.line));
+                    return null;
+                }
+
+                int size = -1;
+
+                if (TryConsume(TokenType.COMMA) != null)
+                {
+                    size = Int32.Parse(TryConsumeErr(TokenType.LITERAL_INT).value);
+                }
+
+                TryConsumeErr(TokenType.CLOSE_SQUARE);
+
+                ArrayType arrayType = new();
+                arrayType.elementType = TypeSystem.GetTypeFromToken(elementType);
+                arrayType.size = size;
+
+                return arrayType;
+            }
+
+            ErrorHandler.Throw(new NotExistingType(firsToken.value, firsToken.line));
+            return null;
         }
 
         private ASTVariableDeclaration ParseVariableDeclaration(bool isFuncArg = false)
         {
             Token identifier = Consume();
             Consume();
-            Token variableType = Consume();
-
-            switch (variableType.tokenType)
-            {
-                case TokenType.TYPE_STRING:
-                case TokenType.TYPE_CHAR:
-                case TokenType.TYPE_BOOLEAN:
-                case TokenType.TYPE_INT:
-                    break;
-                default:
-                    ErrorHandler.Throw(new NotExistingType(variableType.value, variableType.line));                
-                    break;
-            }
+            TypeSystem.Type variableType = ConsumeType();
 
             ASTExpression value = null;
 
             if (TryConsume(TokenType.ASSIGN) != null)
             {
-                ASTExpression expr = ParseExpression();
-                if (expr != null)
+                if (variableType.DataType != DataType.ARRAY)
                 {
-                    if (expr is ASTCharLiteral)
+                    ASTExpression expr = ParseExpression();
+                    if (expr != null)
                     {
-                        if (variableType.tokenType != TokenType.TYPE_CHAR)
+                        if (variableType is PrimitiveType primitiveType) primitiveType.CanAssignLiteral(expr, identifier.line);
+
+                        value = expr;
+                    }
+
+                    if (isFuncArg)
+                    {
+                        if (Expect(TokenType.IDENTIFIER, 1))
                         {
-                            ErrorHandler.Throw(new ExpectedError("char", variableType, variableType.line));
+                            TryConsumeErr(TokenType.COMMA);
                         }
                     }
-                    else if (expr is ASTBoolLiteral)
+                    else
                     {
-                        if (variableType.tokenType != TokenType.TYPE_BOOLEAN)
-                        {
-                            ErrorHandler.Throw(new ExpectedError("bool", variableType, variableType.line));
-                        }
+                        TryConsumeErr(TokenType.SEMICOLON);
                     }
-                    else if (expr is ASTIntLiteral)
+                }
+                else if(variableType is ArrayType array)
+                {
+                    TryConsumeErr(TokenType.OPEN_CURLY);
+                    List<ASTExpression> initialValues = new List<ASTExpression>();
+
+                    while (!Expect(TokenType.CLOSE_CURLY))
                     {
-                        if (variableType.tokenType != TokenType.TYPE_INT)
+                        ASTExpression arrayValue = ParseExpression();
+                        if (arrayValue == null)
                         {
-                            ErrorHandler.Throw(new ExpectedError("int ", variableType, variableType.line));
+                            ErrorHandler.Throw(new ExpectedError("expression", Peek().tokenType.ToString(), Peek().line));
+                            return null;
                         }
-                    }
-                    else if (expr is ASTStringLiteral)
-                    {
-                        if (variableType.tokenType != TokenType.TYPE_STRING)
+
+                        if (!IsValidElementValue(array.elementType.DataType, arrayValue))
                         {
-                            ErrorHandler.Throw(new ExpectedError("string ", variableType, variableType.line));
+                            ErrorHandler.Throw(new ExpectedError($"{array.elementType.DataType} value", Peek().tokenType.ToString(), Peek().line));
+                            return null;
+                        }
+
+                        initialValues.Add(arrayValue);
+
+                        if (TryConsume(TokenType.COMMA) == null)
+                        {
+                            break;
                         }
                     }
 
-                    value = expr;
-                }
-                else
-                {
-                    ErrorHandler.Throw(new ExpectedError("value", variableType, variableType.line));
-                }
-
-                if (isFuncArg)
-                {
-                    if (Expect(TokenType.IDENTIFIER, 1))
-                    {
-                        TryConsumeErr(TokenType.COMMA);
-                    }
-                }
-                else
-                {
+                    TryConsumeErr(TokenType.CLOSE_CURLY);
                     TryConsumeErr(TokenType.SEMICOLON);
+                    value = new ASTArrayDeclaration(initialValues);
                 }
             }
             else
@@ -391,6 +427,14 @@
                 }
             }
 
+            if(variableType is ArrayType arrayType && value is ASTArrayDeclaration arrayDeclaration)
+            {
+                if (arrayType.size == -1 && arrayDeclaration.initialValues != null)
+                {
+                    arrayType.size = arrayDeclaration.initialValues.Count;
+                }
+            }
+
             variables.Add((identifier.value, identifier.line));
             return new ASTVariableDeclaration(identifier, variableType, value);
         }
@@ -400,7 +444,7 @@
             Token identifier = Consume();
             if(identifier.tokenType != TokenType.IDENTIFIER)
             {
-                ErrorHandler.Throw(new ExpectedError("identifier", identifier, identifier.line));
+                ErrorHandler.Throw(new ExpectedError("identifier", identifier.tokenType.ToString(), identifier.line));
                 return null;
             }
             Consume();
@@ -428,93 +472,23 @@
             return new ASTFunctionCall(identifier, arguments);
         }
 
-        private ASTArrayDeclaration ParseArrayDeclaration()
-        {
-            Token identifier = Consume();
-            TryConsumeErr(TokenType.COLON);
-            TryConsumeErr(TokenType.OPEN_SQUARE);
-
-            Token elementType = Consume();
-            if (!IsValidElementType(elementType.tokenType))
-            {
-                ErrorHandler.Throw(new ExpectedError("valid array element type", elementType, elementType.line));
-                return null;
-            }
-
-            ASTExpression sizeExpression = null;
-            List<ASTExpression> initialValues = null;
-
-            if (TryConsume(TokenType.COMMA) != null)
-            {
-                sizeExpression = ParseExpression();
-            }
-
-            TryConsumeErr(TokenType.CLOSE_SQUARE);
-
-            if (TryConsume(TokenType.ASSIGN) != null)
-            {
-                TryConsumeErr(TokenType.OPEN_CURLY);
-                initialValues = new List<ASTExpression>();
-
-                while (!Expect(TokenType.CLOSE_CURLY))
-                {
-                    ASTExpression value = ParseExpression();
-                    if (value == null)
-                    {
-                        ErrorHandler.Throw(new ExpectedError("expression", Peek(), Peek().line));
-                        return null;
-                    }
-
-                    if (!IsValidElementValue(elementType.tokenType, value))
-                    {
-                        ErrorHandler.Throw(new ExpectedError($"{elementType.tokenType.ToString().ToLower()} value", Peek(), Peek().line));
-                        return null;
-                    }
-
-                    initialValues.Add(value);
-
-                    if (TryConsume(TokenType.COMMA) == null)
-                    {
-                        break;
-                    }
-                }
-
-                TryConsumeErr(TokenType.CLOSE_CURLY);
-            }
-
-            TryConsumeErr(TokenType.SEMICOLON);
-
-            if (sizeExpression == null && initialValues != null)
-            {
-                sizeExpression = new ASTIntLiteral(initialValues.Count.ToString());
-            }
-
-            variables.Add((identifier.value, identifier.line));
-            return new ASTArrayDeclaration(identifier, elementType.tokenType, sizeExpression, initialValues);
-        }
-
         private bool IsValidElementType(TokenType type)
         {
             return type == TokenType.TYPE_INT || type == TokenType.TYPE_STRING ||
                    type == TokenType.TYPE_CHAR || type == TokenType.TYPE_BOOLEAN;
         }
 
-        private bool IsValidElementValue(TokenType expectedType, ASTExpression value)
+        private bool IsValidElementValue(DataType expectedType, ASTExpression value)
         {
-            return (expectedType == TokenType.TYPE_INT && value is ASTIntLiteral) ||
-                   (expectedType == TokenType.TYPE_STRING && value is ASTStringLiteral) ||
-                   (expectedType == TokenType.TYPE_CHAR && value is ASTCharLiteral) ||
-                   (expectedType == TokenType.TYPE_BOOLEAN && value is ASTBoolLiteral) ||
+            return (expectedType == DataType.INT && value is ASTIntLiteral) ||
+                   (expectedType == DataType.STRING && value is ASTStringLiteral) ||
+                   (expectedType == DataType.CHAR && value is ASTCharLiteral) ||
+                   (expectedType == DataType.BOOL && value is ASTBoolLiteral) ||
                    value is ASTIdentifier || value is ASTFunctionCall;
         }
 
         private ASTStatement ParseStatement()
         {
-            if (Expect(TokenType.IDENTIFIER) && Expect(TokenType.COLON, 1) && Expect(TokenType.OPEN_SQUARE, 2))
-            {
-                return ParseArrayDeclaration();
-            }
-
             if (Expect(TokenType.IDENTIFIER))
             {
                 if (Expect(TokenType.COLON, 1))
@@ -531,7 +505,7 @@
 
                     if (expr == null)
                     {
-                        ErrorHandler.Throw(new ExpectedError("expression", Peek(), Peek().line));
+                        ErrorHandler.Throw(new ExpectedError("expression", Peek().tokenType.ToString(), Peek().line));
                         return null;
                     }
 
@@ -554,7 +528,7 @@
 
                 if (scope == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("scope", Peek(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("scope", Peek().tokenType.ToString(), Peek().line));
                     return null;
                 }
 
@@ -572,7 +546,7 @@
 
                 if (cond == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("condition", Peek(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("condition", Peek().tokenType.ToString(), Peek().line));
                     return null;
                 }
 
@@ -580,7 +554,7 @@
 
                 if (scope == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("scope", Peek(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("scope", Peek().tokenType.ToString(), Peek().line));
                     return null;
                 }
 
@@ -594,7 +568,7 @@
 
                 if (ret == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("expression", Peek(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("expression", Peek().tokenType.ToString(), Peek().line));
                     return null;
                 }
 
@@ -609,7 +583,7 @@
 
                 if (cond == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("condition", Peek(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("condition", Peek().tokenType.ToString(), Peek().line));
                     return null;
                 }
 
@@ -617,7 +591,7 @@
 
                 if (scope == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("scope", Peek(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("scope", Peek().tokenType.ToString(), Peek().line));
                     return null;
                 }
 
@@ -682,7 +656,7 @@
             {
                 return Consume();
             }
-            ErrorHandler.Throw(new ExpectedError(type.ToString(), Peek(), Peek().line));
+            ErrorHandler.Throw(new ExpectedError(type.ToString(), Peek().tokenType.ToString(), Peek().line));
             return null;
         }
 

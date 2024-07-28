@@ -5,180 +5,166 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static ils.IRGenerator;
+using Type = ils.TypeSystem.Type;
 
 namespace ils
 {
-    public abstract class ASTStatement { }
+    public abstract record ASTNode;
 
-    public class ASTVariableDeclaration(Token name, Token type, ASTExpression value) : ASTStatement
+    public abstract record ASTStatement : ASTNode;
+
+    public record ASTVariableDeclaration : ASTStatement
     {
-        public Token name = name;
-        public TokenType type = type.tokenType;
-        public ASTExpression value = value;
+        public Token Name { get; init; }
+        public Type Type { get; init; }
+        public ASTExpression Value { get; init; }
+
+        public ASTVariableDeclaration(Token name, Type type, ASTExpression value)
+            => (Name, Type, Value) = (name, type, value);
     }
 
-    public abstract class ASTExpression : ASTStatement { }
+    public abstract record ASTExpression : ASTStatement;
 
     public enum ScopeType { DEFAULT, IF, ELIF, ELSE, LOOP, FUNCTION }
-    public class ASTScope(List<ASTStatement> statements, ASTScope parentScope, ScopeType scopeType) : ASTStatement
+    public record ASTScope : ASTStatement
     {
-        public List<ASTStatement> statements = statements;
-        public ASTScope parentScope = parentScope;
-        public ScopeType scopeType = scopeType;
+        public List<ASTStatement> Statements { get; set; }
+        public ASTScope ParentScope { get; init; }
+        public ScopeType ScopeType { get; init; }
 
-        public List<ASTScope> GetChildScopes()
-        {
-            return statements.OfType<ASTScope>().ToList();
-        }
+        public ASTScope(List<ASTStatement> statements, ASTScope parentScope, ScopeType scopeType)
+            => (Statements, ParentScope, ScopeType) = (statements, parentScope, scopeType);
 
-        public List<T> GetStatementsOfType<T>() where T : ASTStatement
-        {
-            List<T> r = statements.OfType<T>().ToList();
-            return r;
-        }     
-    }
-    
-    public class ASTFunction : ASTStatement
-    {
-        public Token identifier;
-        public List<ASTVariableDeclaration> parameters;
-        public Token returnType;
-        public ASTScope scope;
-        public ASTReturn returnNode;
+        public IEnumerable<ASTScope> GetChildScopes()
+            => Statements.OfType<ASTScope>();
 
-        public ASTFunction(Token identifier, List<ASTVariableDeclaration> parameters, Token returnType, ASTScope scope, ASTReturn returnNode)
-        {
-            this.identifier = identifier;
-            this.parameters = parameters;
-            this.returnType = returnType;
-            this.scope = scope;
-            this.returnNode = returnNode;
-        }
+        public IEnumerable<T> GetStatementsOfType<T>() where T : ASTStatement
+            => Statements.OfType<T>();
     }
 
-    public class ASTFunctionCall : ASTExpression
+    public record ASTFunction : ASTStatement
     {
-        public Token identifier;
-        public List<ASTExpression> arguemnts;
+        public Token Identifier { get; init; }
+        public List<ASTVariableDeclaration> Parameters { get; init; }
+        public Type ReturnType { get; init; }
+        public ASTScope Scope { get; init; }
+        public ASTReturn ReturnNode { get; init; }
+
+        public ASTFunction(Token identifier, List<ASTVariableDeclaration> parameters, Type returnType, ASTScope scope, ASTReturn returnNode)
+            => (Identifier, Parameters, ReturnType, Scope, ReturnNode) = (identifier, parameters, returnType, scope, returnNode);
+    }
+
+
+    public record ASTFunctionCall : ASTExpression
+    {
+        public Token Identifier { get; init; }
+        public List<ASTExpression> Arguments { get; init; }
+
         public ASTFunctionCall(Token identifier, List<ASTExpression> arguments)
-        {
-            this.identifier = identifier;
-            this.arguemnts = arguments;
-        }
+            => (Identifier, Arguments) = (identifier, arguments);
     }
 
-    public class ASTReturn : ASTExpression
+    public record ASTReturn : ASTExpression
     {
-        public ASTExpression value;
+        public ASTExpression Value { get; init; }
 
-        public  ASTReturn(ASTExpression value) 
-        {
-            this.value = value;
-        }
+        public ASTReturn(ASTExpression value) => Value = value;
     }
 
 
-    public class ASTAssign(Token identifier, ASTExpression value) : ASTStatement
+    public record ASTAssign(Token identifier, ASTExpression value) : ASTStatement
     {
         public Token identifier = identifier;
         public ASTExpression value = value;
     }
 
-    public class ASTIdentifier(Token token) : ASTExpression
+    public record ASTIdentifier(Token token) : ASTExpression
     {
         public string name = token.value;
     }
 
-    public abstract class ASTLiteral : ASTExpression
+    public abstract record ASTLiteral : ASTExpression
     {
         public string value;
-        public DataType variableType;
+        public Type variableType;
     }
 
-    public class ASTIntLiteral : ASTLiteral
+    public record ASTIntLiteral : ASTLiteral
     {
-        public ASTIntLiteral(string value) { this.value = value; variableType = DataType.INT; }
+        public ASTIntLiteral(string value) { this.value = value; this.variableType = TypeSystem.Types[DataType.INT]; }
     }
 
-    public class ASTStringLiteral : ASTLiteral
+    public record ASTStringLiteral : ASTLiteral
     {
-        public ASTStringLiteral(string value) { this.value = value; variableType = DataType.STRING; }
+        public ASTStringLiteral(string value) { this.value = value; this.variableType = TypeSystem.Types[DataType.STRING]; ; }
     }
 
-    public class ASTCharLiteral : ASTLiteral
+    public record ASTCharLiteral : ASTLiteral
     {
-        public ASTCharLiteral(string value) { this.value = ((int)value[0]).ToString(); variableType = DataType.CHAR; }
+        public ASTCharLiteral(string value) { this.value = ((int)value[0]).ToString(); this.variableType = TypeSystem.Types[DataType.CHAR]; ; }
     }
 
-    public class ASTBoolLiteral : ASTLiteral
+    public record ASTBoolLiteral : ASTLiteral
     {
-        public ASTBoolLiteral(string value) { this.value = value == "true" ? "1" : "0"; variableType = DataType.BOOL; }
+        public ASTBoolLiteral(string value) { this.value = value == "true" ? "1" : "0"; this.variableType = TypeSystem.Types[DataType.BOOL]; ; }
     }
 
-    public class ASTArithmeticOperation : ASTExpression
+    public record ASTArithmeticOperation : ASTExpression
     {
-        public ASTExpression leftNode;
-        public ASTExpression rightNode;
-        public ArithmeticOpType operation;
+        public ASTExpression LeftNode { get; init; }
+        public ASTExpression RightNode { get; init; }
+        public ArithmeticOpType Operation { get; init; }
 
-        public ASTArithmeticOperation(ASTExpression leftNode, ASTExpression rightNode, Token operation)
+       public ASTArithmeticOperation(ASTExpression leftNode, ASTExpression rightNode, Token operation)
         {
-            this.leftNode = leftNode;
-            this.rightNode = rightNode;
-            switch (operation.tokenType)
+            LeftNode = leftNode;
+            RightNode = rightNode;
+            Operation = operation.tokenType switch
             {
-                case TokenType.PLUS:
-                    this.operation = ArithmeticOpType.ADD;
-                    break;
-                case TokenType.MINUS:
-                    this.operation = ArithmeticOpType.SUB;
-                    break;
-                case TokenType.SLASH:
-                    this.operation = ArithmeticOpType.DIV;
-                    break;
-                case TokenType.STAR:
-                    this.operation = ArithmeticOpType.MUL;
-                    break;
-                case TokenType.PERCENT:
-                    this.operation = ArithmeticOpType.MOD;
-                    break;
-            }
+                TokenType.PLUS => ArithmeticOpType.ADD,
+                TokenType.MINUS => ArithmeticOpType.SUB,
+                TokenType.SLASH => ArithmeticOpType.DIV,
+                TokenType.STAR => ArithmeticOpType.MUL,
+                TokenType.PERCENT => ArithmeticOpType.MOD,
+                _ => throw new ArgumentException("Invalid arithmetic operation token", nameof(operation))
+            };
         }
     }
 
-    public class ASTBreak(ASTScope scope) : ASTStatement
+    public record ASTBreak : ASTStatement
     {
-        public ASTScope scope = scope;
+        public ASTScope scope;
+        public ASTBreak(ASTScope scope) { this.scope = scope; }
     }
 
-    public class ASTWhile(ASTCondition cond, ASTScope scope) : ASTStatement
-    {
-        public ASTCondition cond = cond;
-        public ASTScope scope = scope;
-    }
-
-    public class ASTIf(ASTCondition cond, ASTScope scope, ASTIfPred pred) : ASTStatement
+    public record ASTWhile(ASTCondition cond, ASTScope scope) : ASTStatement
     {
         public ASTCondition cond = cond;
         public ASTScope scope = scope;
-        public ASTIfPred pred = pred;
     }
 
-    public abstract class ASTIfPred : ASTStatement { }
-
-    public class ASTElifPred(ASTCondition cond, ASTScope scope, ASTIfPred pred) : ASTIfPred
+    public record ASTIf(ASTCondition cond, ASTScope scope, ASTIfPred pred) : ASTStatement
     {
         public ASTCondition cond = cond;
         public ASTScope scope = scope;
         public ASTIfPred pred = pred;
     }
 
-    public class ASTElsePred(ASTScope scope) : ASTIfPred
+    public abstract record ASTIfPred : ASTStatement { }
+
+    public record ASTElifPred(ASTCondition cond, ASTScope scope, ASTIfPred pred) : ASTIfPred
+    {
+        public ASTCondition cond = cond;
+        public ASTScope scope = scope;
+        public ASTIfPred pred = pred;
+    }
+
+    public record ASTElsePred(ASTScope scope) : ASTIfPred
     {
         public ASTScope scope = scope;
     }
 
-    public class ASTCondition : ASTStatement
+    public record ASTCondition : ASTStatement
     {
         public ASTExpression leftNode;
         public enum ConditionType { EQUAL, NOT_EQUAL, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, NONE }
@@ -204,18 +190,12 @@ namespace ils
         }
     }
 
-    public class ASTArrayDeclaration : ASTStatement
+    public record ASTArrayDeclaration : ASTExpression
     {
-        public Token name;
-        public TokenType elementType;
-        public ASTExpression sizeExpression;
         public List<ASTExpression> initialValues;
 
-        public ASTArrayDeclaration(Token name, TokenType elementType, ASTExpression sizeExpression, List<ASTExpression> initialValues)
+        public ASTArrayDeclaration(List<ASTExpression> initialValues)
         {
-            this.name = name;
-            this.elementType = elementType;
-            this.sizeExpression = sizeExpression;
             this.initialValues = initialValues;
         }
     }

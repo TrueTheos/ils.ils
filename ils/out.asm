@@ -4,10 +4,13 @@ main:
 	mov rbp, rsp
 	.FUNC_MAIN_START:
 	.WHILE_6_START:
-	mov rcx, 1
-	cmp rcx, 1
-	jne .WHILE_6_END
+	cmp qword [limit], 10
+	jge .WHILE_6_END
 	.LOOP_3_START:
+	mov rcx, 0
+	mov rcx, [limit]
+	add rcx, 1
+	mov qword [limit], rcx
 	mov rbx, [xd]
 	mov rdi, strFormatNl
 	mov rsi, rbx

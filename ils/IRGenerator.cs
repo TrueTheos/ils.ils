@@ -9,6 +9,7 @@ using System.Xml.Linq;
 using static ils.ASTCondition;
 using static ils.IRGenerator;
 using static ils.IRGenerator.NamedVariable;
+using static ils.TypeSystem;
 
 namespace ils
 {
@@ -17,7 +18,6 @@ namespace ils
         public const string MAIN_FUNCTION_LABEL = "FUNC_MAIN_START";
         public const string MAIN_FUNCTION_NAME = "main";
 
-        public enum DataType { STRING, INT, CHAR, BOOL, IDENTIFIER, VOID }
         protected static Dictionary<string, IRLabel> _labels = new();
 
         protected static Dictionary<string, NamedVariable> _globalVariables = new();
@@ -82,7 +82,7 @@ namespace ils
             return IR;
         }
 
-        private string CreateNewTempVar(DataType varType, string value, string name = "")
+        private string CreateNewTempVar(TypeSystem.Type varType, string value, string name = "")
         {
             string varName = $"TEMP_{(name != "" ? name+"_" : "")}{_allVariables.Keys.Count}";
             TempVariable tempVar = new TempVariable(varName, varType, value);
@@ -140,15 +140,15 @@ namespace ils
                     break;
                 case ScopeType.FUNCTION:
                     ASTFunction fun = parentNode as ASTFunction;
-                    if (fun.identifier.value == "main") //We are in the main scope
+                    if (fun.Identifier.value == "main") //We are in the main scope
                     {
                         scopeStart = new(MAIN_FUNCTION_LABEL);
                     }
                     else
                     {
-                        scopeStart = new($"FUNC_{fun.identifier.value}_START");
+                        scopeStart = new($"FUNC_{fun.Identifier.value}_START");
                     }
-                    scopeEnd = new($"FUNC_{fun.identifier.value}_END");
+                    scopeEnd = new($"FUNC_{fun.Identifier.value}_END");
                     break;
             }        
             _scopeLabels.Add(astScope, new ScopeLabels() { startLabel = scopeStart, endLabel = scopeEnd });
@@ -164,36 +164,34 @@ namespace ils
 
             if(_currentScope.id == 0) //We are in the main scope
             {
-                List<ASTVariableDeclaration> vars = astScope.GetStatementsOfType<ASTVariableDeclaration>();
+                List<ASTVariableDeclaration> vars = astScope.GetStatementsOfType<ASTVariableDeclaration>().ToList();
                 foreach (ASTVariableDeclaration dec in vars) 
                 {
-                    _globalVariables.Add(dec.name.value, null);
+                    _globalVariables.Add(dec.Name.value, null);
                     ParseVarialbeDeclaration(dec, astScope);
                 }
 
-                List<ASTFunction> funcs = astScope.GetStatementsOfType<ASTFunction>();
+                List<ASTFunction> funcs = astScope.GetStatementsOfType<ASTFunction>().ToList();
                 foreach (ASTFunction func in funcs)
                 {
-                    string identifier = func.identifier.value;
+                    string identifier = func.Identifier.value;
 
                     List<NamedVariable> parameters = new();
-                    foreach (var parameter in func.parameters)
+                    foreach (var parameter in func.Parameters)
                     {
                         NamedVariable par = new NamedVariable(parameter, isGlobal: false, isFuncArg: true);
                         parameters.Add(par);
-                        //_currentScope.AddLocalVariable(par);
-                        //add using arguments
                     }
 
-                    IRFunction irfunc = new IRFunction(identifier, func.returnType != null ? func.returnType.tokenType : null, parameters);
+                    IRFunction irfunc = new IRFunction(identifier, func.ReturnType != null ? func.ReturnType : null, parameters);
                     
-                    _functions.Add(func.identifier.value, irfunc);
+                    _functions.Add(func.Identifier.value, irfunc);
                 }
             }
 
             if(_currentScope.scopeType == ScopeType.FUNCTION && parentNode is ASTFunction parenAstFunc)
             {
-                foreach (var parameter in _functions[parenAstFunc.identifier.value].parameters)
+                foreach (var parameter in _functions[parenAstFunc.Identifier.value].parameters)
                 {
                     _currentScope.AddLocalVariable(parameter);
                 }             
@@ -201,7 +199,7 @@ namespace ils
 
             IRScopeEnd irScopeEnd = new IRScopeEnd(_currentScope);
 
-            foreach (ASTStatement statement in astScope.statements)
+            foreach (ASTStatement statement in astScope.Statements)
             {
                 ParseStatement(statement, astScope, parentNode, irScopeEnd, scopeStart, scopeEnd);
             }
@@ -249,9 +247,9 @@ namespace ils
             }
             else if (statement is ASTFunction func)
             {
-                _currentFunction = _functions[func.identifier.value];
+                _currentFunction = _functions[func.Identifier.value];
                 AddIR(_currentFunction);
-                ParseScope(func.scope, _currentScope, ScopeType.FUNCTION, func);
+                ParseScope(func.Scope, _currentScope, ScopeType.FUNCTION, func);
             }
             else if (statement is ASTVariableDeclaration varDeclaration)
             {
@@ -263,11 +261,11 @@ namespace ils
             }
             else if (statement is ASTReturn ret)
             {
-                IRReturn irret = new IRReturn(ParseExpression(ret.value), 0);
+                IRReturn irret = new IRReturn(ParseExpression(ret.Value), 0);
 
                 if (parentNode != null && parentNode is ASTFunction astFunc)
                 {
-                    irScopeEnd.valuesToClear = astFunc.parameters.Count;
+                    irScopeEnd.valuesToClear = astFunc.Parameters.Count;
                 }
 
                 AddIR(irret);
@@ -302,13 +300,13 @@ namespace ils
 
         private void ParseBreak(ASTScope scope, IRLabel scopeStart, IRLabel scopeEnd)
         {
-            if (scope.scopeType == ScopeType.IF)
+            if (scope.ScopeType == ScopeType.IF)
             {
                 ASTScope parentScopeOfType = GetParentScopeOfType(ScopeType.LOOP, scope);
 
                 if (parentScopeOfType != null)
                 {
-                    if (parentScopeOfType.scopeType == ScopeType.LOOP)
+                    if (parentScopeOfType.ScopeType == ScopeType.LOOP)
                     {
                         AddIR(new IRJump(_scopeLabels[parentScopeOfType].endLabel.labelName, ConditionType.NONE));
                     }
@@ -318,7 +316,7 @@ namespace ils
                     AddIR(new IRJump(scopeEnd.labelName, ConditionType.NONE));
                 }
             }
-            else if (scope.scopeType == ScopeType.LOOP)
+            else if (scope.ScopeType == ScopeType.LOOP)
             {
                 AddIR(new IRJump(scopeEnd.labelName, ConditionType.NONE));
             }
@@ -326,15 +324,15 @@ namespace ils
 
         private void ParseVarialbeDeclaration(ASTVariableDeclaration vardec, ASTScope scope)
         {
-            if (_currentScope.VariableExists(vardec.name.value))
+            if (_currentScope.VariableExists(vardec.Name.value))
             {
                 if (_currentScope.id == 0) return;
-                ErrorHandler.Custom($"[{vardec.name.line}] Variable '{vardec.name.value}' already exists!'");
+                ErrorHandler.Custom($"[{vardec.Name.line}] Variable '{vardec.Name.value}' already exists!'");
             }
             else
             {
                 Variable newVar = null;
-                switch (scope.scopeType)
+                switch (scope.ScopeType)
                 {
                     case ScopeType.FUNCTION:
                     case ScopeType.LOOP:
@@ -348,15 +346,15 @@ namespace ils
 
                 if (_currentScope.id == 0)
                 {
-                    _globalVariables[vardec.name.value] = (NamedVariable)newVar;
+                    _globalVariables[vardec.Name.value] = (NamedVariable)newVar;
                 }
 
                 //_variables.Add(newVar.variableName, newVar);
                 _currentScope.AddLocalVariable(newVar);            
 
-                if (vardec.value != null)
+                if (vardec.Value != null)
                 {
-                    Variable var = ParseExpression(vardec.value);
+                    Variable var = ParseExpression(vardec.Value);
 
                     newVar.AssignVariable(var);
                 }
@@ -369,25 +367,25 @@ namespace ils
         {
             IRFunction func = null;
 
-            if(call.identifier.value.StartsWith('@') && !Builtins.IsBuiltIn(call.identifier.value))
+            if(call.Identifier.value.StartsWith('@') && !Builtins.IsBuiltIn(call.Identifier.value))
             {
-                ErrorHandler.Custom($"Builtin function '{call.identifier.value} doesn't exist!");
+                ErrorHandler.Custom($"Builtin function '{call.Identifier.value} doesn't exist!");
                 return null;
             }
 
-            if(!_functions.ContainsKey(call.identifier.value) && !Builtins.BuiltinFunctions.Any(x => x.name == call.identifier.value))
+            if(!_functions.ContainsKey(call.Identifier.value) && !Builtins.BuiltinFunctions.Any(x => x.name == call.Identifier.value))
             {
-                ErrorHandler.Custom($"Function '{call.identifier.value}' does not exist!");
+                ErrorHandler.Custom($"Function '{call.Identifier.value}' does not exist!");
                 return null;
             }
-            else if(_functions.ContainsKey(call.identifier.value))
+            else if(_functions.ContainsKey(call.Identifier.value))
             {
-                func = _functions[call.identifier.value];
+                func = _functions[call.Identifier.value];
             }
 
             List<Variable> arguments = new();
 
-            foreach (var argument in call.arguemnts)
+            foreach (var argument in call.Arguments)
             {
                 Variable arg = ParseExpression(argument);
 
@@ -414,16 +412,16 @@ namespace ils
            
             }
 
-            if (_functions.ContainsKey(call.identifier.value) && arguments.Count != _functions[call.identifier.value].parameters.Count)
+            if (_functions.ContainsKey(call.Identifier.value) && arguments.Count != _functions[call.Identifier.value].parameters.Count)
             {
-                ErrorHandler.Custom($"Function '{call.identifier.value}' takes {_functions[call.identifier.value].parameters.Count} arguments, you provided {arguments.Count}!");
+                ErrorHandler.Custom($"Function '{call.Identifier.value}' takes {_functions[call.Identifier.value].parameters.Count} arguments, you provided {arguments.Count}!");
                 return null;
             }
 
             //add return somehow 
 
-            IRFunctionCall ircall = new IRFunctionCall(call.identifier.value, arguments);
-            if (func != null && func.returnType != DataType.VOID)
+            IRFunctionCall ircall = new IRFunctionCall(call.Identifier.value, arguments);
+            if (func != null && func.returnType.DataType != DataType.VOID)
             {
                 //_IR.Add(ircall); //na razie nie pozwole na wywołanie funkcji która nie zwraca voida i nie jest przypisywana nigdzie
                 return new FunctionReturnVariable(func.name, func.returnType, _currentScope.localVariables.Count, ircall);
@@ -447,10 +445,10 @@ namespace ils
 
         public ASTScope GetParentScopeOfType(ScopeType scopeType, ASTScope scope)
         {
-            if (scope.parentScope != null)
+            if (scope.ParentScope != null)
             {
-                if (scope.parentScope.scopeType == scopeType) return scope.parentScope;
-                else return GetParentScopeOfType(scopeType, scope.parentScope);
+                if (scope.ParentScope.ScopeType == scopeType) return scope.ParentScope;
+                else return GetParentScopeOfType(scopeType, scope.ParentScope);
             }
             else
             {
@@ -464,23 +462,23 @@ namespace ils
 
             if (assign.value is ASTIdentifier identifier)
             {
-                AddIR(new IRAssign(asnVar, identifier.name, DataType.IDENTIFIER));
+                AddIR(new IRAssign(asnVar, identifier.name, TypeSystem.Types[DataType.IDENTIFIER]));
             }
             else if (assign.value is ASTIntLiteral intLiteral)
             {
-                AddIR(new IRAssign(asnVar, intLiteral.value.ToString(), DataType.INT));
+                AddIR(new IRAssign(asnVar, intLiteral.value.ToString(), TypeSystem.Types[DataType.INT]));
             }
             else if (assign.value is ASTStringLiteral strLiteral)
             {
-                AddIR(new IRAssign(asnVar, strLiteral.value, DataType.STRING));
+                AddIR(new IRAssign(asnVar, strLiteral.value, TypeSystem.Types[DataType.STRING]));
             }
             else if (assign.value is ASTCharLiteral charLiteral)
             {
-                AddIR(new IRAssign(asnVar, charLiteral.value.ToString(), DataType.CHAR));
+                AddIR(new IRAssign(asnVar, charLiteral.value.ToString(), TypeSystem.Types[DataType.CHAR]));
             }
             else if (assign.value is ASTBoolLiteral boolLiteral)
             {
-                AddIR(new IRAssign(asnVar, boolLiteral.value.ToString(), DataType.BOOL));
+                AddIR(new IRAssign(asnVar, boolLiteral.value.ToString(), TypeSystem.Types[DataType.BOOL]));
             }
             else
             {
@@ -489,11 +487,11 @@ namespace ils
 
                 if (var is TempVariable tempVar)
                 {
-                    AddIR(new IRAssign(saveLocation, tempVar.variableName, DataType.IDENTIFIER));
+                    AddIR(new IRAssign(saveLocation, tempVar.variableName, TypeSystem.Types[DataType.IDENTIFIER]));
                 }
                 if (var is NamedVariable namedVar)
                 {
-                    AddIR(new IRAssign(saveLocation, namedVar.variableName, DataType.IDENTIFIER));
+                    AddIR(new IRAssign(saveLocation, namedVar.variableName, TypeSystem.Types[DataType.IDENTIFIER]));
                 }
                 if (var is LiteralVariable literalVar)
                 {
@@ -502,7 +500,7 @@ namespace ils
                 if (var is FunctionReturnVariable regVar)
                 {
                     //_IR.Add(new IRAssign(saveLocation, regVar.value.ToString(), regVar.variableType));
-                    AddIR(new IRAssign(saveLocation, regVar.variableName, DataType.IDENTIFIER));
+                    AddIR(new IRAssign(saveLocation, regVar.variableName, TypeSystem.Types[DataType.IDENTIFIER]));
                 }
             }
         }
@@ -540,7 +538,7 @@ namespace ils
             }
             else
             {
-                rightNodeEvalResult = new LiteralVariable("1", DataType.INT);
+                rightNodeEvalResult = new LiteralVariable("1", TypeSystem.Types[DataType.INT]);
             }
 
             return new IRCompare(leftNodeEvalResult, rightNodeEvalResult);
@@ -625,7 +623,6 @@ namespace ils
             }
             else if(_expression is ASTLiteral literal)
             {
-
                 return new LiteralVariable(literal.value, literal.variableType);
             }    
             else if (_expression is ASTFunctionCall funcCall)
@@ -634,19 +631,19 @@ namespace ils
             }
             else if (_expression is ASTArithmeticOperation arithmeticOp)
             {
-                Variable leftVar = ParseExpression(arithmeticOp.leftNode);
+                Variable leftVar = ParseExpression(arithmeticOp.LeftNode);
 
-                Variable rightVar = ParseExpression(arithmeticOp.rightNode);
+                Variable rightVar = ParseExpression(arithmeticOp.RightNode);
 
-                if(!VerifyOperation(leftVar.variableType, rightVar.variableType, arithmeticOp.operation))
+                if(!VerifyOperation(leftVar.variableType.DataType, rightVar.variableType.DataType, arithmeticOp.Operation))
                 {
                     return null;
                 }
 
-                string resultName = CreateNewTempVar(DataType.INT, "0", "OP_RES");
+                string resultName = CreateNewTempVar(TypeSystem.Types[DataType.INT], "0", "OP_RES");
                 TempVariable result = _tempVariables[resultName];
 
-                AddIR(new IRArithmeticOp(result, leftVar, rightVar, arithmeticOp.operation));
+                AddIR(new IRArithmeticOp(result, leftVar, rightVar, arithmeticOp.Operation));
                 if(leftVar is TempVariable) AddIR(new IRDestroyTemp(leftVar.variableName));
                 if(rightVar is TempVariable) AddIR(new IRDestroyTemp(rightVar.variableName));
                 return result;
@@ -683,6 +680,14 @@ namespace ils
             public override string GetString()
             {
                 return $"({Name}, {ret.variableName})";
+            }
+        }
+
+        public class IRArray : IRNode
+        {
+            public override string GetString()
+            {
+                throw new NotImplementedException();
             }
         }
 
@@ -733,24 +738,17 @@ namespace ils
         public class IRFunction : IRNode
         {
             public string name;
-            public DataType returnType = DataType.VOID;
+            public TypeSystem.Type returnType = TypeSystem.Types[DataType.VOID];
             public List<NamedVariable> parameters = new();
             public List<IRNode> nodes = new();
 
-            public IRFunction(string name, TokenType? returnType, List<NamedVariable> parameters)
+            public IRFunction(string name, TypeSystem.Type returnType, List<NamedVariable> parameters)
             {
                 Name = "FUNC";
                 this.name = name;
                 if (returnType != null)
                 {
-                    switch (returnType)
-                    {
-                        case TokenType.TYPE_STRING: this.returnType = DataType.STRING; break;
-                        case TokenType.TYPE_INT: this.returnType = DataType.INT; break;
-                        case TokenType.TYPE_CHAR: this.returnType = DataType.CHAR; break;
-                        case TokenType.TYPE_BOOLEAN: this.returnType = DataType.BOOL; break;
-                        case TokenType.IDENTIFIER: this.returnType = DataType.IDENTIFIER; break;
-                    }
+                    this.returnType = returnType;
                 }
                 this.parameters = parameters;
             }
@@ -858,7 +856,7 @@ namespace ils
         public abstract class Variable : IRNode
         {
             public string variableName = "";
-            public DataType variableType;
+            public TypeSystem.Type variableType;
             public string value { private set; get; }
 
             public IRNode lastUse = null;
@@ -874,40 +872,22 @@ namespace ils
                 guid = IRGenerator.NewId();
             }
 
-            public void SetValue(string val, DataType valType)
+            public void SetValue(string val, TypeSystem.Type valType)
             {
                 this.variableType = valType;
 
-
-                switch (this.variableType)  
-                {
-                    case DataType.STRING:
-                        this.value = val;
-                        break;
-                    case DataType.INT:
-                        this.value = val;
-                        break;
-                    case DataType.CHAR:
-                        this.value = val;
-                        break;
-                    case DataType.BOOL:
-                        this.value = val;
-                        break;
-                    case DataType.IDENTIFIER:
-                        this.value = val;
-                        break;
-                }
+                this.value = val;
             }
 
             public void AssignVariable(Variable val)
             {
                 if (val is TempVariable tempVar)
                 {
-                    SetValue(tempVar.guid.ToString(), DataType.IDENTIFIER);
+                    SetValue(tempVar.guid.ToString(), TypeSystem.Types[DataType.IDENTIFIER]);
                 }
                 if (val is NamedVariable namedVar)
                 {
-                    SetValue(namedVar.guid.ToString(), DataType.IDENTIFIER);
+                    SetValue(namedVar.guid.ToString(), TypeSystem.Types[DataType.IDENTIFIER]);
                 }
                 if (val is LiteralVariable literalVar)
                 {
@@ -930,7 +910,7 @@ namespace ils
             public string funcName;
             public int index;
             public IRFunctionCall call;
-            public FunctionReturnVariable(string funcName, DataType varType, int index, IRFunctionCall call)
+            public FunctionReturnVariable(string funcName, TypeSystem.Type varType, int index, IRFunctionCall call)
             {
                 Name = "FUNC_RETURN_VAR";
                 this.funcName = funcName;
@@ -958,31 +938,34 @@ namespace ils
             {
                 Name = "NAMED_VAR";
 
-                this.variableName = declaration.name.value;
+                this.variableName = declaration.Name.value;
                 this.isGlobal = isGlobal;
                 this.isFuncArg = isFuncArg;
 
-                switch (declaration.type)
+                this.variableType = declaration.Type;
+
+                switch (declaration.Type.DataType)
                 {
-                    case TokenType.TYPE_STRING:
-                        variableType = DataType.STRING;
-                        if (declaration.value == null) SetValue(@"\0", variableType);
+                    case DataType.STRING:
+                        if (declaration.Value == null) SetValue(@"\0", variableType);
                         break;
-                    case TokenType.TYPE_INT:
-                        variableType = DataType.INT;
-                        if (declaration.value == null) SetValue("0", variableType);
+                    case DataType.INT:
+                        if (declaration.Value == null) SetValue("0", variableType);
                         break;
-                    case TokenType.TYPE_CHAR:
-                        variableType = DataType.CHAR;
-                        if (declaration.value == null) SetValue("0", variableType);
+                    case DataType.CHAR:
+                        if (declaration.Value == null) SetValue("0", variableType);
                         break;
-                    case TokenType.TYPE_BOOLEAN:
-                        variableType = DataType.BOOL;
-                        if (declaration.value == null) SetValue("0", variableType);
+                    case DataType.BOOL:
+                        if (declaration.Value == null) SetValue("0", variableType);
                         break;
-                    case TokenType.IDENTIFIER:
-                        variableType = DataType.IDENTIFIER;
-                        if (declaration.value == null) SetValue("[]", variableType);
+                    case DataType.IDENTIFIER:
+                        if (declaration.Value == null) SetValue("[]", variableType);
+                        break;
+                    case DataType.ARRAY:
+                        if (declaration.Type is ArrayType arrayType)
+                        {
+                            if (declaration.Value == null) SetValue($"{arrayType.size * 4}", variableType);
+                        }
                         break;
                 }
 
@@ -997,7 +980,7 @@ namespace ils
 
         public class TempVariable : Variable
         {
-            public TempVariable(string variableName, DataType varType, string value)
+            public TempVariable(string variableName, TypeSystem.Type varType, string value)
             {
                 Name = "TEMP_VAR";
                 this.variableName = variableName;
@@ -1015,14 +998,14 @@ namespace ils
 
         public class LiteralVariable : Variable
         {
-            public LiteralVariable(string value, DataType type)
+            public LiteralVariable(string value, TypeSystem.Type type)
             {
                 Name = "LIT_VAR";
 
                 this.variableType = type;
                 //this.variableName = $"LIT_{literalVarsCount}_{value}";
 
-                if(type == DataType.STRING)
+                if(type.DataType == DataType.STRING)
                 {
                     if (!stringLiterals.Reverse.Contains(value))
                     {
@@ -1060,10 +1043,10 @@ namespace ils
         public class IRAssign : IRNode
         {
             public Variable identifier;
-            public DataType assignedType;
+            public TypeSystem.Type assignedType;
             public string value;
 
-            public IRAssign(Variable identifier, string value, DataType assignedType)
+            public IRAssign(Variable identifier, string value, TypeSystem.Type assignedType)
             {
                 Name = "ASSIGN";
 

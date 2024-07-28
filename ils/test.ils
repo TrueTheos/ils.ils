@@ -8,8 +8,9 @@ fun test()
 
 fun main() -> int
 {
-	while(true)
+	while(limit < 10)
 	{
+		limit =limit + 1;
 		@println(xd);
 	}
 	return 0;

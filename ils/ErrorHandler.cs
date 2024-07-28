@@ -43,16 +43,16 @@ namespace ils
     public class ExpectedError : CustomError
     {
         private string _expected;
-        private Token _received;
+        private string _received;
 
-        public ExpectedError(string expected, Token received, int line) : base(1, "ExpectedError", line)
+        public ExpectedError(string expected, string received, int line) : base(1, "ExpectedError", line)
         {
             _expected = expected;
             _received = received;
         }
         public override string Throw()
         {
-            return $"[{line}] {name}: expected '{_expected}' but received '{_received.value}'";
+            return $"[{line}] {name}: expected '{_expected}' but received '{_received}'";
         }
     }
 
