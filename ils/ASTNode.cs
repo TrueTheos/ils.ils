@@ -80,7 +80,7 @@ namespace ils
 
     public record ASTIdentifier(Token token) : ASTExpression
     {
-        public string name = token.value;
+        public string name = token.Value;
     }
 
     public abstract record ASTLiteral : ASTExpression
@@ -109,6 +109,21 @@ namespace ils
         public ASTBoolLiteral(string value) { this.value = value == "true" ? "1" : "0"; this.variableType = TypeSystem.Types[DataType.BOOL]; ; }
     }
 
+    public record ASTArrayConstructor : ASTExpression
+    {
+        public List<ASTExpression> values;
+        public TypeSystem.Type type;
+        public ASTArrayConstructor(List<ASTExpression> vals, TypeSystem.Type type) { this.values = vals; this.type = type; }
+    }
+
+    public record ASTArrayIndex : ASTStatement
+    {
+        public ASTExpression index;
+        public Token identifier;
+        public ASTArrayIndex(ASTExpression index, Token identifier) { this.index = index; this.identifier = identifier; }
+    }
+
+
     public record ASTArithmeticOperation : ASTExpression
     {
         public ASTExpression LeftNode { get; init; }
@@ -119,7 +134,7 @@ namespace ils
         {
             LeftNode = leftNode;
             RightNode = rightNode;
-            Operation = operation.tokenType switch
+            Operation = operation.TokenType switch
             {
                 TokenType.PLUS => ArithmeticOpType.ADD,
                 TokenType.MINUS => ArithmeticOpType.SUB,
@@ -176,7 +191,7 @@ namespace ils
         {
             this.leftNode = leftNode;
 
-            switch(conditionSymbol?.tokenType)
+            switch(conditionSymbol?.TokenType)
             {
                 case TokenType.EQUALS: this.conditionType = ConditionType.EQUAL; break;
                 case TokenType.NOT_EQUAL: this.conditionType = ConditionType.NOT_EQUAL; break;

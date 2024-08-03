@@ -8,355 +8,297 @@ namespace ils
 {
     public class Token
     {
-        public TokenType tokenType;
-        public int line;
-        public string value;
-        public Token(TokenType tokenType, int line, string value)
+        public readonly TokenType TokenType;
+        public readonly int Line;
+        public readonly string Value;
+        public readonly int StartIndex, EndIndex;
+        public Token(TokenType tokenType, int line, string value, int startIndex, int endIndex)
         {
-            this.tokenType = tokenType;
-            this.line = line;
-            this.value = value;
+            this.TokenType = tokenType;
+            this.Line = line;
+            this.Value = value;
+            this.StartIndex = startIndex;
+            this.EndIndex = endIndex;
         }
     }
 
     public class Tokenizer
     {
-        private string _source;
-        private int _index;
-        List<Token> _tokens = new();
+        private readonly Dictionary<string, TokenType> keywords = new()
+        {
+            ["int"] = TokenType.TYPE_INT,
+            ["str"] = TokenType.TYPE_STRING,
+            ["char"] = TokenType.TYPE_CHAR,
+            ["bool"] = TokenType.TYPE_BOOLEAN,
+            ["true"] = TokenType.TRUE,
+            ["false"] = TokenType.FALSE,
+            ["if"] = TokenType.IF,
+            ["elif"] = TokenType.ELIF,
+            ["else"] = TokenType.ELSE,
+            ["while"] = TokenType.WHILE,
+            ["break"] = TokenType.BREAK,
+            ["fun"] = TokenType.FUNCTION,
+            ["return"] = TokenType.RETURN
+        };
+
+        private string source;
+        private int index;
+        private List<Token> tokens = new();
+        private int lineCount = 1;
+        private int startIndex, endIndex;
+
+        private void AddToken(TokenType tokenType, string value)
+        {
+            tokens.Add(new Token(tokenType, lineCount, value, startIndex, endIndex));
+            startIndex = endIndex;
+        }
 
         public List<Token> Tokenize(string source)
         {
-            _source = source; 
-            
-            string buffer = "";
-            int lineCount = 1;
+            this.source = source;
+            tokens.Clear();
+            index = 0;
+            lineCount = 1;
 
-            while(CanPeek())
+            while (CanPeek())
             {
-                char nextChar = Peek();
-                if(IsValidStartChar(nextChar))
+                char c = Peek();
+                if (IsValidStartChar(c))
                 {
-                    buffer += Consume();
-
-                    while(CanPeek() && char.IsLetterOrDigit(Peek())) 
-                    {
-                        buffer += Consume();
-                    }
-
-                    if(buffer == "int")
-                    {
-                        _tokens.Add(new(TokenType.TYPE_INT, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if (buffer == "str")
-                    {
-                        _tokens.Add(new(TokenType.TYPE_STRING, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if(buffer == "char")
-                    {
-                        _tokens.Add(new(TokenType.TYPE_CHAR, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if(buffer == "bool")
-                    {
-                        _tokens.Add(new(TokenType.TYPE_BOOLEAN, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if (buffer == "true")
-                    {
-                        _tokens.Add(new(TokenType.TRUE, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if (buffer == "false")
-                    {
-                        _tokens.Add(new(TokenType.FALSE, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if (buffer == "if")
-                    {
-                        _tokens.Add(new(TokenType.IF, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if (buffer == "elif")
-                    {
-                        _tokens.Add(new(TokenType.ELIF, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if (buffer == "else")
-                    {
-                        _tokens.Add(new(TokenType.ELSE, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if (buffer == "while")
-                    {
-                        _tokens.Add(new(TokenType.WHILE, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if (buffer == "break")
-                    {
-                        _tokens.Add(new(TokenType.BREAK, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if (buffer == "fun")
-                    {
-                        _tokens.Add(new(TokenType.FUNCTION, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if (buffer == "return")
-                    {
-                        _tokens.Add(new(TokenType.RETURN, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if(Previous(TokenType.QUOTATION)) 
-                    {
-                        while(CanPeek() && Peek() != '"')
-                        {
-                            buffer += Consume();
-                        }
-
-                        _tokens.Add(new(TokenType.LITERAL_STR, lineCount, buffer));
-                        buffer = "";
-                    }
-                    else if(Previous(TokenType.SINGLE_QUATATION))
-                    {
-                        while(CanPeek() && char.IsLetterOrDigit(Peek()))
-                        {
-                            buffer += Consume();
-                        }
-
-                        if(buffer.Length == 1)
-                        {
-                            _tokens.Add(new(TokenType.LITERAL_CHAR, lineCount, buffer));
-                            buffer = "";
-                        }
-                        else
-                        {
-                            ErrorHandler.Throw(new ExpectedError("char", null, lineCount));
-                        }
-                    }
-                    else
-                    {
-                        _tokens.Add(new(TokenType.IDENTIFIER, lineCount, buffer));
-                        buffer = "";
-                    }
+                    TokenizeIdentifierOrKeyword();
                 }
-                else if(char.IsDigit(Peek()))
+                else if (char.IsDigit(c))
                 {
-                    buffer += Consume();
-                    while(CanPeek() && char.IsDigit(Peek()))
-                    {
-                        buffer += Consume();
-                    }
-                    _tokens.Add(new(TokenType.LITERAL_INT, lineCount, buffer));
-                    buffer = "";
+                    TokenizeNumber();
                 }
-                else if(Expect("//"))
+                else if (c is '"' or '\'')
                 {
-                    Consume();
-                    Consume();
-                    while(CanPeek() && Peek() != '\n')
-                    {
-                        Consume();
-                    }
-                }
-                else if (Expect("->"))
-                {
-                    Consume();
-                    Consume();
-                    _tokens.Add(new(TokenType.RETURN_TYPE, lineCount, buffer));
-                }
-                else if(Expect("/*"))
-                {
-                    Consume();
-                    Consume();
-                    while(CanPeek())
-                    {
-                        if(Expect("*/"))
-                        {
-                            break;
-                        }
-                        Consume();
-                    }
-                    if(CanPeek())
-                    {
-                        Consume();
-                    }
-                    if(CanPeek())
-                    {
-                        Consume();
-                    }
-                }
-                else if(Expect("=="))
-                {
-                    Consume();
-                    Consume();
-                    _tokens.Add(new(TokenType.EQUALS, lineCount, buffer));
-                }
-                else if (Expect("!="))
-                {
-                    Consume();
-                    Consume();
-                    _tokens.Add(new(TokenType.NOT_EQUAL, lineCount, buffer));
-                }
-                else if (Expect(">="))
-                {
-                    Consume();
-                    Consume();
-                    _tokens.Add(new(TokenType.GREATER_EQUAL, lineCount, buffer));
-                }
-                else if (Expect("<="))
-                {
-                    Consume();
-                    Consume();
-                    _tokens.Add(new(TokenType.LESS_EQUAL, lineCount, buffer));
-                }
-                else if (Expect(","))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.COMMA, lineCount, buffer));
-                }
-                else if (Expect("!"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.NOT, lineCount, buffer));
-                }
-                else if (Expect(">"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.GREATER, lineCount, buffer));
-                }              
-                else if (Expect("<"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.LESS, lineCount, buffer));
-                }             
-                else if (Expect("="))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.ASSIGN, lineCount, buffer));
-                }
-                else if (Expect("("))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.OPEN_PARENTHESIS, lineCount, buffer));
-                }
-                else if (Expect(")"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.CLOSE_PARENTHESIS, lineCount, buffer));
-                }
-                else if (Expect("{"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.OPEN_CURLY, lineCount, buffer));
-                }
-                else if (Expect("}"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.CLOSE_CURLY, lineCount, buffer));
-                }
-                else if (Expect("["))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.OPEN_SQUARE, lineCount, buffer));
-                }
-                else if (Expect("]"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.CLOSE_SQUARE, lineCount, buffer));
-                }
-                else if(Expect(":"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.COLON, lineCount, buffer));
-                }
-                else if (Expect(";"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.SEMICOLON, lineCount, buffer));
-                }
-                else if (Expect("\""))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.QUOTATION, lineCount, buffer));
-                }
-                else if (Expect("'"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.SINGLE_QUATATION, lineCount, buffer));
-                }
-                else if (Expect("+"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.PLUS, lineCount, buffer));
-                }
-                else if (Expect("%"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.PERCENT, lineCount, buffer));
-                }
-                else if (Expect("-"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.MINUS, lineCount, buffer));
-                }
-                else if (Expect("*"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.STAR, lineCount, buffer));
-                }
-                else if (Expect("/"))
-                {
-                    Consume();
-                    _tokens.Add(new(TokenType.SLASH, lineCount, buffer));
-                }
-                else if (Expect("\n"))
-                {
-                    Consume();
-                    lineCount++;
-                }
-                else if(char.IsWhiteSpace(Peek()))
-                {
-                    Consume();
+                    TokenizeStringOrCharLiteral();
                 }
                 else
                 {
-                    ErrorHandler.Custom($"[{lineCount}] Invalid token: '{buffer}'!");
+                    TokenizeOperatorOrPunctuation();
                 }
             }
-            _index = 0;
-            return _tokens;
+            index = 0;
+            return tokens;
         }
+
+        private void TokenizeIdentifierOrKeyword()
+        {
+            string buffer = "";
+            if (IsValidStartChar(Peek())) buffer = Consume().ToString();
+            buffer += ConsumeWhile(c => char.IsLetterOrDigit(c) || c == '_');
+            if (keywords.TryGetValue(buffer, out TokenType type))
+            {
+                AddToken(type, buffer);
+            }
+            else
+            {
+                AddToken(TokenType.IDENTIFIER, buffer);
+            }
+        }
+
+        private void TokenizeNumber()
+        {
+            string buffer = ConsumeWhile(char.IsDigit);
+            AddToken(TokenType.LITERAL_INT, buffer);
+        }
+
+        private void TokenizeStringOrCharLiteral()
+        {
+            char quote = Consume();
+            string buffer = ConsumeWhile(c => c != quote);
+            if (CanPeek() && Peek() == quote)
+            {
+                Consume(); 
+                AddToken(quote == '"' ? TokenType.LITERAL_STR : TokenType.LITERAL_CHAR, buffer);
+            }
+            else
+            {
+                ErrorHandler.Throw(new ExpectedError($"{quote}", null, lineCount));
+            }
+        }
+
+        private void TokenizeOperatorOrPunctuation()
+        {
+            switch (Peek())
+            {
+                case '+': AddTokenAndAdvance(TokenType.PLUS); break;
+                case '-':
+                    if (Peek(1) == '>')
+                    {
+                        AddTokenAndAdvance(TokenType.RETURN_TYPE, 2);
+                    }
+                    else
+                    {
+                        AddTokenAndAdvance(TokenType.MINUS);
+                    }
+                    break;
+                case '*': AddTokenAndAdvance(TokenType.STAR); break;
+                case '/':
+                    if (Peek(1) == '/')
+                    {
+                        ConsumeLineComment();
+                    }
+                    else if (Peek(1) == '*')
+                    {
+                        ConsumeBlockComment();
+                    }
+                    else
+                    {
+                        AddTokenAndAdvance(TokenType.SLASH);
+                    }
+                    break;
+                case '%': AddTokenAndAdvance(TokenType.PERCENT); break;
+                case '=':
+                    if (Peek(1) == '=')
+                    {
+                        AddTokenAndAdvance(TokenType.EQUALS, 2);
+                    }
+                    else
+                    {
+                        AddTokenAndAdvance(TokenType.ASSIGN);
+                    }
+                    break;
+                case '!':
+                    if (Peek(1) == '=')
+                    {
+                        AddTokenAndAdvance(TokenType.NOT_EQUAL, 2);
+                    }
+                    else
+                    {
+                        AddTokenAndAdvance(TokenType.NOT);
+                    }
+                    break;
+                case '>':
+                    if (Peek(1) == '=')
+                    {
+                        AddTokenAndAdvance(TokenType.GREATER_EQUAL, 2);
+                    }
+                    else
+                    {
+                        AddTokenAndAdvance(TokenType.GREATER);
+                    }
+                    break;
+                case '<':
+                    if (Peek(1) == '=')
+                    {
+                        AddTokenAndAdvance(TokenType.LESS_EQUAL, 2);
+                    }
+                    else
+                    {
+                        AddTokenAndAdvance(TokenType.LESS);
+                    }
+                    break;
+                case '(': AddTokenAndAdvance(TokenType.OPEN_PARENTHESIS); break;
+                case ')': AddTokenAndAdvance(TokenType.CLOSE_PARENTHESIS); break;
+                case '{': AddTokenAndAdvance(TokenType.OPEN_CURLY); break;
+                case '}': AddTokenAndAdvance(TokenType.CLOSE_CURLY); break;
+                case '[': AddTokenAndAdvance(TokenType.OPEN_SQUARE); break;
+                case ']': AddTokenAndAdvance(TokenType.CLOSE_SQUARE); break;
+                case ':': AddTokenAndAdvance(TokenType.COLON); break;
+                case ';': AddTokenAndAdvance(TokenType.SEMICOLON); break;
+                case ',': AddTokenAndAdvance(TokenType.COMMA); break;
+                case '"': AddTokenAndAdvance(TokenType.QUOTATION); break;
+                case '\'': AddTokenAndAdvance(TokenType.SINGLE_QUATATION); break;
+                case '\n':
+                    Consume();
+                    lineCount++;
+                    break;
+                case var c when char.IsWhiteSpace(c):
+                    Consume();
+                    break;
+                default:
+                    ErrorHandler.Custom($"[{lineCount}] Invalid token: '{Peek()}'!");
+                    Consume(); // Skip the invalid character
+                    break;
+            }
+        }
+
+        private void ConsumeLineComment()
+        {
+            Consume();
+            Consume();
+
+            while (CanPeek() && Peek() != '\n')
+            {
+                Consume();
+            }
+        }
+
+        private void ConsumeBlockComment()
+        {
+            // Consume the opening /*
+            Consume();
+            Consume();
+
+            while (CanPeek())
+            {
+                if (Peek() == '*' && Peek(1) == '/')
+                {
+                    // Found the closing */
+                    Consume(); // Consume *
+                    Consume(); // Consume /
+                    return;
+                }
+                else if (Peek() == '\n')
+                {
+                    lineCount++;
+                }
+                Consume();
+            }
+
+            // If we get here, the comment was never closed
+            ErrorHandler.Throw(new UnexpectedEndOfInputError("Unclosed block comment", lineCount));
+        }
+
+        private void AddTokenAndAdvance(TokenType type, int advance = 1)
+        {
+            AddToken(type, source.Substring(index, advance));
+            index += advance;
+        }
+
+        private string ConsumeWhile(Func<char, bool> predicate)
+        {
+            int start = index;
+            while (CanPeek() && predicate(Peek()))
+            {
+                Consume();
+            }
+            return source[start..index];
+        }
+
 
         private char Peek(int offset = 0)
         {
-            if(_index + offset >= _source.Length)
+            if(index + offset >= source.Length)
             {
                 return '\0';
             }
-            return _source[_index + offset];
+            return source[index + offset];
         }
 
         private bool CanPeek()
         {
-            return _index < _source.Length && _source[_index] != '\0';
+            return index < source.Length && source[index] != '\0';
         }
 
         private char Consume()
         {
-            return _source[_index++];
+            endIndex++;
+            
+            return source[index++];
         }
 
         private bool Previous(TokenType type)
         {
-            return _tokens.Count > 1 && _tokens[_tokens.Count - 1].tokenType == type;
+            return tokens.Count > 1 && tokens[tokens.Count - 1].TokenType == type;
         }
 
         private bool Expect(string next)
         {
-            return _index + next.Length < _source.Length && _source.Substring(_index, next.Length) == next;
+            return index + next.Length < source.Length && source.Substring(index, next.Length) == next;
         }
 
         private bool IsValidStartChar(char c)

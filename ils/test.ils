@@ -1,5 +1,5 @@
-limit: int = 1;
-xd: str = "XTDD";
+integer: int = 1+2*(6+0);
+array: [int] = {1+1,2,3,4,5};
 
 fun test()
 {
@@ -8,10 +8,6 @@ fun test()
 
 fun main() -> int
 {
-	while(limit < 10)
-	{
-		limit =limit + 1;
-		@println(xd);
-	}
+	@println(integer);
 	return 0;
 }

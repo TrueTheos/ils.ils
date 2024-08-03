@@ -29,7 +29,7 @@ namespace ils
                 }
                 else
                 {
-                    ErrorHandler.Throw(new ExpectedError("statement", Peek().tokenType.ToString(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("statement", Peek().TokenType.ToString(), Peek().Line));
                     return null;
                 }
             }
@@ -44,7 +44,7 @@ namespace ils
         {
             if (TryConsume(TokenType.LITERAL_INT) is Token intLiteral && intLiteral != null)
             {
-                return new ASTIntLiteral(intLiteral.value);
+                return new ASTIntLiteral(intLiteral.Value);
             }
             if (Expect(TokenType.IDENTIFIER))
             {
@@ -66,7 +66,7 @@ namespace ils
                 {
                     if (TryConsume(TokenType.QUOTATION) != null)
                     {
-                        return new ASTStringLiteral(strLiteral.value);
+                        return new ASTStringLiteral(strLiteral.Value);
                     }
                 }
 
@@ -77,7 +77,7 @@ namespace ils
                 {
                     if (TryConsume(TokenType.SINGLE_QUATATION) != null)
                     {
-                        return new ASTCharLiteral(charLiteral.value);
+                        return new ASTCharLiteral(charLiteral.Value);
                     }
                 }
 
@@ -95,7 +95,7 @@ namespace ils
                 ASTExpression expr = ParseExpression();
                 if (expr == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("expression", Peek().tokenType.ToString(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("expression", Peek().TokenType.ToString(), Peek().Line));
                     return null;
                 }
                 TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
@@ -122,7 +122,7 @@ namespace ils
 
                 if (currentToken != null)
                 {
-                    prec = GetArithmeticOperationPrec(currentToken.tokenType);
+                    prec = GetArithmeticOperationPrec(currentToken.TokenType);
                     if (prec == -1 || prec < minPrec)
                     {
                         break;
@@ -130,11 +130,11 @@ namespace ils
 
                     if (leftNode is ASTCharLiteral)
                     {
-                        ErrorHandler.Custom($"[{currentToken.line}] You can't do arithmrtic operations on characters!");
+                        ErrorHandler.Custom($"[{currentToken.Line}] You can't do arithmrtic operations on characters!");
                     }
                     if (leftNode is ASTBoolLiteral)
                     {
-                        ErrorHandler.Custom($"[{currentToken.line}] You can't do arithmrtic operations on booleans!");
+                        ErrorHandler.Custom($"[{currentToken.Line}] You can't do arithmrtic operations on booleans!");
                     }
                 }
                 else
@@ -149,7 +149,7 @@ namespace ils
 
                 if (rightNode == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("expression", nextToken.tokenType.ToString(), nextToken.line));
+                    ErrorHandler.Throw(new ExpectedError("expression", nextToken.TokenType.ToString(), nextToken.Line));
                     return null;
                 }
 
@@ -193,12 +193,12 @@ namespace ils
 
             if (leftNode == null)
             {
-                ErrorHandler.Throw(new ExpectedError("condition", Peek().tokenType.ToString(), Peek().line));
+                ErrorHandler.Throw(new ExpectedError("condition", Peek().TokenType.ToString(), Peek().Line));
                 return null;
             }
 
             Token conditionType = Peek();
-            TokenType type = conditionType.tokenType;
+            TokenType type = conditionType.TokenType;
             if (type == TokenType.EQUALS || type == TokenType.NOT_EQUAL || type == TokenType.GREATER
                 || type == TokenType.GREATER_EQUAL || type == TokenType.LESS || type == TokenType.LESS_EQUAL)
             {
@@ -208,7 +208,7 @@ namespace ils
 
                 if (rightNode == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("condition", Peek().tokenType.ToString(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("condition", Peek().TokenType.ToString(), Peek().Line));
                     return null;
                 }
 
@@ -232,7 +232,7 @@ namespace ils
 
                 if (cond == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("condition", Peek().tokenType.ToString(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("condition", Peek().TokenType.ToString(), Peek().Line));
                     return null;
                 }
 
@@ -240,7 +240,7 @@ namespace ils
 
                 if (scope == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("scope", Peek().tokenType.ToString(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("scope", Peek().TokenType.ToString(), Peek().Line));
                     return null;
                 }
 
@@ -254,7 +254,7 @@ namespace ils
 
                 if (scope == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("scope", Peek().tokenType.ToString(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("scope", Peek().TokenType.ToString(), Peek().Line));
                     return null;
                 }
 
@@ -304,7 +304,7 @@ namespace ils
 
             if(variableType != null && scope.GetStatementsOfType<ASTReturn>().ToList().Count == 0)
             {
-                ErrorHandler.Custom($"Function '{identifier.value}' doesn't return a value!");
+                ErrorHandler.Custom($"Function '{identifier.Value}' doesn't return a value!");
             }
 
             return new ASTFunction(identifier, parameters, variableType, scope, variableType != null ? scope.GetStatementsOfType<ASTReturn>().Last() : null);
@@ -313,17 +313,17 @@ namespace ils
         public TypeSystem.Type ConsumeType()
         {
             Token firsToken = Consume();
-            if (firsToken.tokenType == TokenType.TYPE_INT) return TypeSystem.Types[DataType.INT];
-            if (firsToken.tokenType == TokenType.TYPE_BOOLEAN) return TypeSystem.Types[DataType.BOOL];
-            if (firsToken.tokenType == TokenType.TYPE_STRING) return TypeSystem.Types[DataType.STRING];
-            if (firsToken.tokenType == TokenType.TYPE_CHAR) return TypeSystem.Types[DataType.CHAR];
+            if (firsToken.TokenType == TokenType.TYPE_INT) return TypeSystem.Types[DataType.INT];
+            if (firsToken.TokenType == TokenType.TYPE_BOOLEAN) return TypeSystem.Types[DataType.BOOL];
+            if (firsToken.TokenType == TokenType.TYPE_STRING) return TypeSystem.Types[DataType.STRING];
+            if (firsToken.TokenType == TokenType.TYPE_CHAR) return TypeSystem.Types[DataType.CHAR];
 
-            if(firsToken.tokenType == TokenType.OPEN_SQUARE)
+            if(firsToken.TokenType == TokenType.OPEN_SQUARE)
             {
                 Token elementType = Consume();
-                if (!IsValidElementType(elementType.tokenType))
+                if (!IsValidElementType(elementType.TokenType))
                 {
-                    ErrorHandler.Throw(new ExpectedError("valid array element type", elementType.tokenType.ToString(), elementType.line));
+                    ErrorHandler.Throw(new ExpectedError("valid array element type", elementType.TokenType.ToString(), elementType.Line));
                     return null;
                 }
 
@@ -331,7 +331,7 @@ namespace ils
 
                 if (TryConsume(TokenType.COMMA) != null)
                 {
-                    size = Int32.Parse(TryConsumeErr(TokenType.LITERAL_INT).value);
+                    size = Int32.Parse(TryConsumeErr(TokenType.LITERAL_INT).Value);
                 }
 
                 TryConsumeErr(TokenType.CLOSE_SQUARE);
@@ -343,7 +343,7 @@ namespace ils
                 return arrayType;
             }
 
-            ErrorHandler.Throw(new NotExistingType(firsToken.value, firsToken.line));
+            ErrorHandler.Throw(new NotExistingType(firsToken.Value, firsToken.Line));
             return null;
         }
 
@@ -362,7 +362,7 @@ namespace ils
                     ASTExpression expr = ParseExpression();
                     if (expr != null)
                     {
-                        if (variableType is PrimitiveType primitiveType) primitiveType.CanAssignLiteral(expr, identifier.line);
+                        if (variableType is PrimitiveType primitiveType) primitiveType.CanAssignLiteral(expr, identifier.Line);
 
                         value = expr;
                     }
@@ -389,13 +389,13 @@ namespace ils
                         ASTExpression arrayValue = ParseExpression();
                         if (arrayValue == null)
                         {
-                            ErrorHandler.Throw(new ExpectedError("expression", Peek().tokenType.ToString(), Peek().line));
+                            ErrorHandler.Throw(new ExpectedError("expression", Peek().TokenType.ToString(), Peek().Line));
                             return null;
                         }
 
                         if (!IsValidElementValue(array.elementType.DataType, arrayValue))
                         {
-                            ErrorHandler.Throw(new ExpectedError($"{array.elementType.DataType} value", Peek().tokenType.ToString(), Peek().line));
+                            ErrorHandler.Throw(new ExpectedError($"{array.elementType.DataType} value", Peek().TokenType.ToString(), Peek().Line));
                             return null;
                         }
 
@@ -409,7 +409,7 @@ namespace ils
 
                     TryConsumeErr(TokenType.CLOSE_CURLY);
                     TryConsumeErr(TokenType.SEMICOLON);
-                    value = new ASTArrayDeclaration(initialValues);
+                    value = new ASTArrayConstructor(initialValues, variableType);
                 }
             }
             else
@@ -435,16 +435,16 @@ namespace ils
                 }
             }
 
-            variables.Add((identifier.value, identifier.line));
+            variables.Add((identifier.Value, identifier.Line));
             return new ASTVariableDeclaration(identifier, variableType, value);
         }
 
         private ASTFunctionCall ParseFunctionCall()
         {
             Token identifier = Consume();
-            if(identifier.tokenType != TokenType.IDENTIFIER)
+            if(identifier.TokenType != TokenType.IDENTIFIER)
             {
-                ErrorHandler.Throw(new ExpectedError("identifier", identifier.tokenType.ToString(), identifier.line));
+                ErrorHandler.Throw(new ExpectedError("identifier", identifier.TokenType.ToString(), identifier.Line));
                 return null;
             }
             Consume();
@@ -484,7 +484,8 @@ namespace ils
                    (expectedType == DataType.STRING && value is ASTStringLiteral) ||
                    (expectedType == DataType.CHAR && value is ASTCharLiteral) ||
                    (expectedType == DataType.BOOL && value is ASTBoolLiteral) ||
-                   value is ASTIdentifier || value is ASTFunctionCall;
+                   value is ASTIdentifier || value is ASTFunctionCall ||
+                   value is ASTArithmeticOperation;
         }
 
         private ASTStatement ParseStatement()
@@ -505,7 +506,7 @@ namespace ils
 
                     if (expr == null)
                     {
-                        ErrorHandler.Throw(new ExpectedError("expression", Peek().tokenType.ToString(), Peek().line));
+                        ErrorHandler.Throw(new ExpectedError("expression", Peek().TokenType.ToString(), Peek().Line));
                         return null;
                     }
 
@@ -520,6 +521,24 @@ namespace ils
                     TryConsumeErr(TokenType.SEMICOLON);
                     return call;
                 }
+
+                if(Expect(TokenType.OPEN_SQUARE,1))
+                {
+                    Token identifier = Consume();
+                    Consume();
+
+                    ASTExpression expr = ParseExpression();
+
+                    if (expr == null)
+                    {
+                        ErrorHandler.Throw(new ExpectedError("expression", Peek().TokenType.ToString(), Peek().Line));
+                        return null;
+                    }
+
+                    TryConsumeErr(TokenType.CLOSE_SQUARE);
+
+                    return new ASTArrayIndex(expr, identifier);
+                }
             }
 
             if (Expect(TokenType.OPEN_CURLY))
@@ -528,7 +547,7 @@ namespace ils
 
                 if (scope == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("scope", Peek().tokenType.ToString(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("scope", Peek().TokenType.ToString(), Peek().Line));
                     return null;
                 }
 
@@ -546,7 +565,7 @@ namespace ils
 
                 if (cond == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("condition", Peek().tokenType.ToString(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("condition", Peek().TokenType.ToString(), Peek().Line));
                     return null;
                 }
 
@@ -554,7 +573,7 @@ namespace ils
 
                 if (scope == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("scope", Peek().tokenType.ToString(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("scope", Peek().TokenType.ToString(), Peek().Line));
                     return null;
                 }
 
@@ -568,7 +587,7 @@ namespace ils
 
                 if (ret == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("expression", Peek().tokenType.ToString(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("expression", Peek().TokenType.ToString(), Peek().Line));
                     return null;
                 }
 
@@ -583,7 +602,7 @@ namespace ils
 
                 if (cond == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("condition", Peek().tokenType.ToString(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("condition", Peek().TokenType.ToString(), Peek().Line));
                     return null;
                 }
 
@@ -591,7 +610,7 @@ namespace ils
 
                 if (scope == null)
                 {
-                    ErrorHandler.Throw(new ExpectedError("scope", Peek().tokenType.ToString(), Peek().line));
+                    ErrorHandler.Throw(new ExpectedError("scope", Peek().TokenType.ToString(), Peek().Line));
                     return null;
                 }
 
@@ -602,7 +621,7 @@ namespace ils
             {
                 if (_currentScope == _mainScope)
                 {
-                    ErrorHandler.Custom($"[{Peek().line}] You can not break out of main scope!");
+                    ErrorHandler.Custom($"[{Peek().Line}] You can not break out of main scope!");
                     return null;
                 }
 
@@ -645,7 +664,7 @@ namespace ils
         private bool Expect(TokenType type, int offset = 0)
         {
             Token p = Peek(offset);
-            bool r = p.tokenType == type;
+            bool r = p.TokenType == type;
             bool c = CanPeek();
             return c && r;
         }
@@ -656,7 +675,7 @@ namespace ils
             {
                 return Consume();
             }
-            ErrorHandler.Throw(new ExpectedError(type.ToString(), Peek().tokenType.ToString(), Peek().line));
+            ErrorHandler.Throw(new ExpectedError(type.ToString(), Peek().TokenType.ToString(), Peek().Line));
             return null;
         }
 

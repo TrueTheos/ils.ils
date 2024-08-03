@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualBasic;
+﻿using Iced.Intel;
+using Microsoft.VisualBasic;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -140,15 +141,15 @@ namespace ils
                     break;
                 case ScopeType.FUNCTION:
                     ASTFunction fun = parentNode as ASTFunction;
-                    if (fun.Identifier.value == "main") //We are in the main scope
+                    if (fun.Identifier.Value == "main") //We are in the main scope
                     {
                         scopeStart = new(MAIN_FUNCTION_LABEL);
                     }
                     else
                     {
-                        scopeStart = new($"FUNC_{fun.Identifier.value}_START");
+                        scopeStart = new($"FUNC_{fun.Identifier.Value}_START");
                     }
-                    scopeEnd = new($"FUNC_{fun.Identifier.value}_END");
+                    scopeEnd = new($"FUNC_{fun.Identifier.Value}_END");
                     break;
             }        
             _scopeLabels.Add(astScope, new ScopeLabels() { startLabel = scopeStart, endLabel = scopeEnd });
@@ -167,14 +168,14 @@ namespace ils
                 List<ASTVariableDeclaration> vars = astScope.GetStatementsOfType<ASTVariableDeclaration>().ToList();
                 foreach (ASTVariableDeclaration dec in vars) 
                 {
-                    _globalVariables.Add(dec.Name.value, null);
+                    _globalVariables.Add(dec.Name.Value, null);
                     ParseVarialbeDeclaration(dec, astScope);
                 }
 
                 List<ASTFunction> funcs = astScope.GetStatementsOfType<ASTFunction>().ToList();
                 foreach (ASTFunction func in funcs)
                 {
-                    string identifier = func.Identifier.value;
+                    string identifier = func.Identifier.Value;
 
                     List<NamedVariable> parameters = new();
                     foreach (var parameter in func.Parameters)
@@ -185,13 +186,13 @@ namespace ils
 
                     IRFunction irfunc = new IRFunction(identifier, func.ReturnType != null ? func.ReturnType : null, parameters);
                     
-                    _functions.Add(func.Identifier.value, irfunc);
+                    _functions.Add(func.Identifier.Value, irfunc);
                 }
             }
 
             if(_currentScope.scopeType == ScopeType.FUNCTION && parentNode is ASTFunction parenAstFunc)
             {
-                foreach (var parameter in _functions[parenAstFunc.Identifier.value].parameters)
+                foreach (var parameter in _functions[parenAstFunc.Identifier.Value].parameters)
                 {
                     _currentScope.AddLocalVariable(parameter);
                 }             
@@ -247,7 +248,7 @@ namespace ils
             }
             else if (statement is ASTFunction func)
             {
-                _currentFunction = _functions[func.Identifier.value];
+                _currentFunction = _functions[func.Identifier.Value];
                 AddIR(_currentFunction);
                 ParseScope(func.Scope, _currentScope, ScopeType.FUNCTION, func);
             }
@@ -258,6 +259,10 @@ namespace ils
             else if (statement is ASTScope scope)
             {
                 ParseScope(scope, _currentScope, ScopeType.DEFAULT);
+            }
+            else if (statement is ASTArrayIndex index)
+            {
+                ParseIndex(index);
             }
             else if (statement is ASTReturn ret)
             {
@@ -298,6 +303,12 @@ namespace ils
 
         }
 
+        private void ParseIndex(ASTArrayIndex index)
+        {
+            //todo dodac sprawdzanie czy array istnieje, czy index nie za duzy itd
+            Variable idnexVar = ParseExpression(index.index);
+        }
+
         private void ParseBreak(ASTScope scope, IRLabel scopeStart, IRLabel scopeEnd)
         {
             if (scope.ScopeType == ScopeType.IF)
@@ -324,10 +335,10 @@ namespace ils
 
         private void ParseVarialbeDeclaration(ASTVariableDeclaration vardec, ASTScope scope)
         {
-            if (_currentScope.VariableExists(vardec.Name.value))
+            if (_currentScope.VariableExists(vardec.Name.Value))
             {
                 if (_currentScope.id == 0) return;
-                ErrorHandler.Custom($"[{vardec.Name.line}] Variable '{vardec.Name.value}' already exists!'");
+                ErrorHandler.Custom($"[{vardec.Name.Line}] Variable '{vardec.Name.Value}' already exists!'");
             }
             else
             {
@@ -346,7 +357,7 @@ namespace ils
 
                 if (_currentScope.id == 0)
                 {
-                    _globalVariables[vardec.Name.value] = (NamedVariable)newVar;
+                    _globalVariables[vardec.Name.Value] = (NamedVariable)newVar;
                 }
 
                 //_variables.Add(newVar.variableName, newVar);
@@ -367,20 +378,20 @@ namespace ils
         {
             IRFunction func = null;
 
-            if(call.Identifier.value.StartsWith('@') && !Builtins.IsBuiltIn(call.Identifier.value))
+            if(call.Identifier.Value.StartsWith('@') && !Builtins.IsBuiltIn(call.Identifier.Value))
             {
-                ErrorHandler.Custom($"Builtin function '{call.Identifier.value} doesn't exist!");
+                ErrorHandler.Custom($"Builtin function '{call.Identifier.Value} doesn't exist!");
                 return null;
             }
 
-            if(!_functions.ContainsKey(call.Identifier.value) && !Builtins.BuiltinFunctions.Any(x => x.name == call.Identifier.value))
+            if(!_functions.ContainsKey(call.Identifier.Value) && !Builtins.BuiltinFunctions.Any(x => x.name == call.Identifier.Value))
             {
-                ErrorHandler.Custom($"Function '{call.Identifier.value}' does not exist!");
+                ErrorHandler.Custom($"Function '{call.Identifier.Value}' does not exist!");
                 return null;
             }
-            else if(_functions.ContainsKey(call.Identifier.value))
+            else if(_functions.ContainsKey(call.Identifier.Value))
             {
-                func = _functions[call.Identifier.value];
+                func = _functions[call.Identifier.Value];
             }
 
             List<Variable> arguments = new();
@@ -412,15 +423,15 @@ namespace ils
            
             }
 
-            if (_functions.ContainsKey(call.Identifier.value) && arguments.Count != _functions[call.Identifier.value].parameters.Count)
+            if (_functions.ContainsKey(call.Identifier.Value) && arguments.Count != _functions[call.Identifier.Value].parameters.Count)
             {
-                ErrorHandler.Custom($"Function '{call.Identifier.value}' takes {_functions[call.Identifier.value].parameters.Count} arguments, you provided {arguments.Count}!");
+                ErrorHandler.Custom($"Function '{call.Identifier.Value}' takes {_functions[call.Identifier.Value].parameters.Count} arguments, you provided {arguments.Count}!");
                 return null;
             }
 
             //add return somehow 
 
-            IRFunctionCall ircall = new IRFunctionCall(call.Identifier.value, arguments);
+            IRFunctionCall ircall = new IRFunctionCall(call.Identifier.Value, arguments);
             if (func != null && func.returnType.DataType != DataType.VOID)
             {
                 //_IR.Add(ircall); //na razie nie pozwole na wywołanie funkcji która nie zwraca voida i nie jest przypisywana nigdzie
@@ -456,9 +467,27 @@ namespace ils
             }
         }
 
+        public static bool CanEvalArtihmeticExpr(ASTArithmeticOperation op)
+        {
+            if (op.LeftNode == null || op.RightNode == null) return false;
+            bool CheckNode(ASTExpression expr)
+            {
+                if (expr is ASTIntLiteral)
+                {
+                    return true;
+                }
+                else if (expr is ASTArithmeticOperation operation)
+                {
+                    return CanEvalArtihmeticExpr(operation);
+                }
+                return false;
+            }
+            return CheckNode(op.LeftNode) && CheckNode(op.RightNode);
+        }
+
         private void ParseAssign(ASTAssign assign)
         {
-            Variable asnVar = _currentScope.allVariables[assign.identifier.value];
+            Variable asnVar = _currentScope.allVariables[assign.identifier.Value];
 
             if (assign.value is ASTIdentifier identifier)
             {
@@ -482,7 +511,7 @@ namespace ils
             }
             else
             {
-                Variable saveLocation = _currentScope.allVariables[assign.identifier.value];
+                Variable saveLocation = _currentScope.allVariables[assign.identifier.Value];
                 Variable var = ParseExpression(assign.value);
 
                 if (var is TempVariable tempVar)
@@ -629,6 +658,21 @@ namespace ils
             {
                 return ParseFunctionCall(funcCall);
             }
+            else if(_expression is ASTArrayConstructor arrayConstructor)
+            {
+                string val = "";
+                List<string> vals = new();
+
+                foreach (var item in arrayConstructor.values)
+                {
+                    Variable parsedItem = ParseExpression(item);
+                    vals.Add(parsedItem.value);
+                }
+
+                val = String.Join(", ", vals);
+
+                return new ArrayVariable(arrayConstructor.type, val);
+            }
             else if (_expression is ASTArithmeticOperation arithmeticOp)
             {
                 Variable leftVar = ParseExpression(arithmeticOp.LeftNode);
@@ -638,6 +682,12 @@ namespace ils
                 if(!VerifyOperation(leftVar.variableType.DataType, rightVar.variableType.DataType, arithmeticOp.Operation))
                 {
                     return null;
+                }
+
+                if (IRGenerator.CanEvalArtihmeticExpr(arithmeticOp))
+                {
+                    var x = MathEvaluator.Evaluate(arithmeticOp);
+                    return new LiteralVariable(x.ToString(), TypeSystem.Types[DataType.INT]);
                 }
 
                 string resultName = CreateNewTempVar(TypeSystem.Types[DataType.INT], "0", "OP_RES");
@@ -897,6 +947,10 @@ namespace ils
                 {
                     SetValue(regvar.funcName + regvar.index.ToString(), val.variableType);
                 }
+                if(val is ArrayVariable arrayvar)
+                {
+                    SetValue(arrayvar.value, arrayvar.variableType);
+                }
             }
 
             public void UpdateDestroyAfter(IRNode node)
@@ -938,7 +992,7 @@ namespace ils
             {
                 Name = "NAMED_VAR";
 
-                this.variableName = declaration.Name.value;
+                this.variableName = declaration.Name.Value;
                 this.isGlobal = isGlobal;
                 this.isFuncArg = isFuncArg;
 
@@ -1023,6 +1077,25 @@ namespace ils
                     this.variableName = value.ToString();
                     SetValue(value, variableType);
                 }               
+
+                _allVariables.Add(guid.ToString(), this);
+            }
+
+            
+
+            public override string GetString()
+            {
+                return $"({Name}, {value})";
+            }
+        }
+
+        public class ArrayVariable : Variable
+        {
+            public ArrayVariable(TypeSystem.Type varType, string value)
+            {
+                Name = "ARRAY_VAR";
+                this.variableType = varType;
+                SetValue(value, variableType);
 
                 _allVariables.Add(guid.ToString(), this);
             }

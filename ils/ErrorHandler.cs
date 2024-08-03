@@ -67,7 +67,21 @@ namespace ils
 
         public override string Throw()
         {
-            return $"[line] {_providedType} is a wrong type!";
+            return $"[{line}] {_providedType} is a wrong type!";
+        }
+    }
+
+    public class UnexpectedEndOfInputError : CustomError
+    {
+        private string _message;
+        public UnexpectedEndOfInputError(string message, int line) : base(3, "UnexpectedEndOfInputError", line)
+        {
+            _message = message;
+        }
+
+        public override string Throw()
+        {
+            return $"[{line}] {name}: {_message}";
         }
     }
 }

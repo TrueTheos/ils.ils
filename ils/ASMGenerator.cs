@@ -192,22 +192,6 @@ namespace ils
             }
         }
 
-        /*public void Mov(string destination, string source)
-        {
-            if (asm.Last().Contains("mov"))
-            {
-                if (!string.IsNullOrEmpty(lastMoveDestination) && lastMoveDestination == destination)
-                {
-                    ReplaceLastAsm($"mov {destination}, {source}");
-                    lastMoveDestination = destination;
-                    return;
-                }
-            }
-
-            AddAsm($"mov {destination}, {source}");
-            lastMoveDestination = destination;
-        }*/
-
         private void FunctionPrologue(IRFunctionPrologue prologue)
         {
             AddAsm("push rbp");
@@ -265,7 +249,15 @@ namespace ils
 
             foreach (var data in _dataSection)
             {
-                AddAsm($"{data.Value.name} {data.Value.word.shortName} {data.Value.var.value}");
+                if (data.Value.var.variableType.DataType == DataType.ARRAY)
+                {
+
+                    AddAsm($"{data.Value.name} {data.Value.word.shortName} {data.Value.var.value}");
+                }
+                else
+                {
+                    AddAsm($"{data.Value.name} {data.Value.word.shortName} {data.Value.var.value}");
+                }
             }
 
             AddAsm("section .text", 0);
@@ -379,7 +371,13 @@ namespace ils
                             });
                             break;
                         case DataType.ARRAY:
-                            //todo implement
+                            _dataSection.Add(namedVar.variableName, new ReservedVariable()
+                            {
+                                name = namedVar.variableName,
+                                word = _words[8],
+                                var = namedVar
+                            });
+                            break;
                             break;
                     }
                 }
@@ -454,7 +452,7 @@ namespace ils
                        );
                     break;
                 case DataType.ARRAY:
-                    //todo implement
+                    ErrorHandler.Custom("Tego nie wolno");
                     break;
             }
         }
@@ -463,7 +461,6 @@ namespace ils
         {
             Address location = GetLocation(asign.identifier, GetLocationUseCase.MovedTo, false);
             Address val = new Address() { type = Address.Type.value, value = asign.value } ;
-            //todo tutaj albo memory albo value, idk
 
             switch (asign.assignedType.DataType)
             {
@@ -496,7 +493,7 @@ namespace ils
                     else val = _usedRegs[asign.value].name;*/
                     break;
                 case DataType.ARRAY:
-                    //todo implement
+                    ErrorHandler.Custom("Tego tez nie wolno");
                     break;
             }
 
@@ -625,7 +622,7 @@ namespace ils
                             sizeB = "qword ";
                             break;
                         case DataType.ARRAY:
-                            //todo implement;
+                            ErrorHandler.Custom("tego oczywsicie tez nie wolno");
                             break;
                     }
                 }

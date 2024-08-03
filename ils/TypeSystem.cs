@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -22,7 +23,7 @@ namespace ils
 
         public static Type GetTypeFromToken(Token token)
         {
-            switch (token.tokenType)
+            switch (token.TokenType)
             {
                 case TokenType.TYPE_INT: return Types[DataType.INT];
                 case TokenType.TYPE_STRING: return Types[DataType.STRING];
@@ -30,7 +31,7 @@ namespace ils
                 case TokenType.TYPE_BOOLEAN: return Types[DataType.BOOL];
             }
 
-            ErrorHandler.Custom($"Wrong type {token.tokenType}");
+            ErrorHandler.Custom($"Wrong type {token.TokenType}");
             return null;
         }
 
@@ -61,6 +62,12 @@ namespace ils
 
             public bool CanAssignLiteral(ASTExpression expression, int line)
             {
+                if(DataType == DataType.INT && expression is ASTArithmeticOperation)
+                {
+                    double result = Convert.ToDouble(new DataTable().Compute("1 + 2 * 7", null));
+                    return true;
+                }
+
                 if(expression is not ASTLiteral literal)
                 {
                     ErrorHandler.Throw(new ExpectedError(DataType.ToString(), expression.ToString(), line));

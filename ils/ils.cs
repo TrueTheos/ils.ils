@@ -1,4 +1,9 @@
-﻿using ils;
+﻿using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Jobs;
+using BenchmarkDotNet.Running;
+using BenchmarkDotNet.Toolchains.InProcess.Emit;
+using ils;
+using System.Data;
 using static System.Net.Mime.MediaTypeNames;
 
 class ILS
@@ -11,7 +16,14 @@ class ILS
     public static IRGraph irGraph;
 
     static void Main(string[] args)
-    {                
+    {
+        /*var config = DefaultConfig.Instance
+            .AddJob(Job
+                 .WithLaunchCount(1)
+                 .WithToolchain(InProcessEmitToolchain.Instance));*/
+        //var summary = BenchmarkRunner.Run<BenchmarkMyStuff>();
+
+        
         if (File.Exists(SOURCE_FILE))
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
@@ -24,16 +36,16 @@ class ILS
             Tokenizer tokenizer = new();
             List<Token> tokens = tokenizer.Tokenize(source);
 
-            /*int line = 1;
-            foreach (Token token in tokens)
-            {
-                if (token.line != line)
-                {
-                    line = token.line;
-                    Console.Write("\n");
-                }
-                Console.Write(token.tokenType.ToString() + " ");            
-            }*/
+            //int line = 1;
+            //foreach (Token token in tokens)
+            //{
+            //    if (token.Line != line)
+            //    {
+            //        line = token.Line;
+            //        Console.Write("\n");
+            //    }
+            //    Console.Write(token.TokenType.ToString() + " ");            
+            //}
 
             Parser parser = new();
             ASTScope mainScope = parser.Parse(tokens);
@@ -43,11 +55,9 @@ class ILS
 
             irGen = new();
             var ir = irGen.Generate(mainScope);
-            IROptimizer optimizer = new();
-            var optimizedIR = optimizer.GetOptimizedIR(ir);
 
             irGraph = new IRGraph();
-            optimizedIR = irGraph.OptimizeIR(optimizedIR);
+            var optimizedIR = irGraph.OptimizeIR(ir);
 
             asmGen = new();
             string asm = asmGen.GenerateASM(optimizedIR);
@@ -60,13 +70,12 @@ class ILS
             watch.Stop();
             var elapsedMs = watch.ElapsedMilliseconds;
             Console.WriteLine($"Compiled in {elapsedMs}ms");
-
         }
         else
         {
             Console.WriteLine("File not found.");
-        }      
-    }
+        }
+    } 
 }
 
 public class Node
