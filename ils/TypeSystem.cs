@@ -114,7 +114,7 @@ namespace ils
         public class ArrayType : Type
         {
             public Type elementType;
-            public int size = -1;
+            public int length = -1;
 
             public override string Name => "[]";
 

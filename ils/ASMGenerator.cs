@@ -22,6 +22,24 @@ namespace ils
             { 8, new Word(){ shortName = Word.ShortName.dq, longName = "qword"} }
         };
 
+        private readonly Dictionary<RegType, Register> _allRegs = new()
+        {
+            {RegType.rcx, new() { regType = RegType.rcx, isPreserved =  false}},
+            {RegType.rsi, new() { regType = RegType.rsi, isPreserved =  false}},
+            {RegType.rbp, new() { regType = RegType.rbp, isPreserved = true }},
+            {RegType.rdx, new() { regType = RegType.rdx, isPreserved =  false}},
+            {RegType.rsp, new() { regType = RegType.rsp, isPreserved = true }},
+            {RegType.rbx, new() { regType = RegType.rbx, isPreserved =  true}},
+            {RegType.r8, new() { regType = RegType.r8,  isPreserved =  false}},
+            {RegType.r9, new() { regType = RegType.r9,  isPreserved =  false}},
+            {RegType.r10, new() { regType = RegType.r10, isPreserved =  false}},
+            {RegType.r11, new() { regType = RegType.r11, isPreserved =  false}},
+            {RegType.r12, new() { regType = RegType.r12, isPreserved =  true}},
+            {RegType.r13, new() { regType = RegType.r13, isPreserved =  true}},
+            {RegType.r14, new() { regType = RegType.r14, isPreserved =  true}},
+            {RegType.r15, new() { regType = RegType.r15, isPreserved = true }},
+        };
+
         private readonly Dictionary<RegType, Register> _regs = new()
         {
             {RegType.rcx, new() { regType = RegType.rcx, isPreserved =  false}},
@@ -46,6 +64,7 @@ namespace ils
         {
             public RegType regType;
             public bool isPreserved;
+            public bool isAddress; //if false then it means that it contains a value, if true then an address
         }
 
         public Queue<Register> _availableRegs = new();
@@ -115,8 +134,8 @@ namespace ils
 
         public struct Address
         {
-            public enum Type { reg, memory, value }
-            public Type type;
+            public enum AddressType { reg, memory, value }
+            public AddressType Type;
 
             public string prefix;
             public RegType reg;
@@ -124,19 +143,81 @@ namespace ils
             public string value;
         }
 
+        public Register GetRegister(string name, bool needsPreservedReg)
+        {
+            if(string.IsNullOrEmpty(name))
+            {
+                name = Guid.NewGuid().ToString();
+            }
+
+            if(needsPreservedReg)
+            {
+                Register reg = _availableRegs.DequeueItemWithCondition(i => i.isPreserved);
+                _usedRegs.Add(name, reg);
+                return reg;
+            }
+            else
+            {
+                Register reg = _availableRegs.Dequeue();
+                _usedRegs.Add(name, reg);
+                return reg;
+            }           
+        }
+
         //register <- memory
         public void Load(Address destination, Address source)
-        {
+        {          
             string preffix = source.prefix;
             if (!string.IsNullOrEmpty(preffix)) preffix += " ";
 
             AddAsm($"mov {destination.reg}, {preffix}[{source.address}]");
+            Register r = _allRegs[destination.reg];
+            r.isAddress = false;
+            _allRegs[destination.reg] = r;
         }
 
         //register <- register
-        public void Move(Address destination, Address source)
+        public void Move(Address destination, Address source, bool needsAddress)
         {
-            AddAsm($"mov {destination.reg}, {source.reg}");
+            if (_allRegs[source.reg].isAddress)
+            {
+                AddAsm($"mov {destination.reg}, [{source.reg}]");
+            }
+            else
+            {
+                AddAsm($"mov {destination.reg}, {source.reg}");
+            }
+
+            Register r = _allRegs[destination.reg];
+            r.isAddress = _allRegs[source.reg].isAddress;
+            _allRegs[destination.reg] = r;
+            /*if(needsAddress)
+            {
+                AddAsm($"mov {destination.reg}, {source.reg}");
+
+                Register r = _allRegs[destination.reg];
+                r.isAddress = true;
+                _allRegs[destination.reg] = r;
+            }
+            else
+            {
+                if (_allRegs[source.reg].isAddress)
+                {
+                    AddAsm($"mov {destination.reg}, [{source.reg}]");
+
+                    Register r = _allRegs[destination.reg];
+                    r.isAddress = false;
+                    _allRegs[destination.reg] = r;
+                }
+                else
+                {
+                    AddAsm($"mov {destination.reg}, {source.reg}");
+
+                    Register r = _allRegs[destination.reg];
+                    r.isAddress = false;
+                    _allRegs[destination.reg] = r;
+                }
+            }       */
         }
 
         //memory <- register
@@ -149,11 +230,11 @@ namespace ils
 
         public void MoveValue(Address destination, Address source)
         {
-            if(destination.type == Address.Type.reg)
+            if(destination.Type == Address.AddressType.reg)
             {
                 AddAsm($"mov {destination.reg}, {source.value}");
             }
-            else if(destination.type == Address.Type.memory)
+            else if(destination.Type == Address.AddressType.memory)
             {
                 string preffix = destination.prefix;
                 if (!string.IsNullOrEmpty(preffix)) preffix += " ";
@@ -161,33 +242,37 @@ namespace ils
             }
         }
 
-        public void AutoMov(Address destination, Address source)
+        public void AutoMov(Address destination, Address source, bool needsAddress = false)
         {
-            if(source.type == Address.Type.value)
+            if(source.Type == Address.AddressType.value)
             {
                 MoveValue(destination, source);
             }
-            else if(destination.type == Address.Type.memory)
+            else if(destination.Type == Address.AddressType.memory)
             {
-                if(source.type == Address.Type.memory)
+                if(source.Type == Address.AddressType.memory)
                 {
-                    Console.WriteLine("tak nie wolno xd");
+                    Register reg = GetRegister("", false);
+                    AutoMov(new Address() { Type = Address.AddressType.reg, reg = reg.regType }, source);
+                    AutoMov(destination, new Address() { Type = Address.AddressType.reg, reg = reg.regType });
+                    FreeReg(reg);
+                    //Console.WriteLine("cant do that");
                     return;
                 }
-                else if(source.type == Address.Type.reg)
+                else if(source.Type == Address.AddressType.reg)
                 {
                     Store(destination, source);
                 }
             }
-            else if(destination.type == Address.Type.reg)
+            else if(destination.Type == Address.AddressType.reg)
             {
-                if (source.type == Address.Type.memory)
+                if (source.Type == Address.AddressType.memory)
                 {
                     Load(destination, source);
                 }
-                else if (source.type == Address.Type.reg)
+                else if (source.Type == Address.AddressType.reg)
                 {
-                    Move(destination, source);
+                    Move(destination, source, needsAddress);
                 }
             }
         }
@@ -197,8 +282,8 @@ namespace ils
             AddAsm("push rbp");
             AutoMov
                 (
-                    new Address() { type = Address.Type.reg, reg = RegType.rbp },
-                    new Address() { type = Address.Type.reg, reg = RegType.rsp }
+                    new Address() { Type = Address.AddressType.reg, reg = RegType.rbp },
+                    new Address() { Type = Address.AddressType.reg, reg = RegType.rsp }
                 );
             if(prologue.localVariables != 0)
             {
@@ -210,8 +295,8 @@ namespace ils
         {
             AutoMov
                 (
-                    new Address() { type = Address.Type.reg, reg = RegType.rsp },
-                    new Address() { type = Address.Type.reg, reg = RegType.rbp }
+                    new Address() { Type = Address.AddressType.reg, reg = RegType.rsp },
+                    new Address() { Type = Address.AddressType.reg, reg = RegType.rbp }
                 );
             AddAsm("pop rbp");
         }
@@ -239,9 +324,9 @@ namespace ils
             AddAsm("intFormatNl db \"%d\", 10, 0");
             AddAsm("charFormatNl db \"%c\", 10, 0");
 
-            if (stringLiterals.Forward.Count > 0)
+            if (StringLiterals.Forward.Count > 0)
             {
-                foreach (var strlit in stringLiterals.Forward.GetDictionary())
+                foreach (var strlit in StringLiterals.Forward.GetDictionary())
                 {
                     AddAsm($"{strlit.Key} db `{strlit.Value}`");
                 }
@@ -249,14 +334,11 @@ namespace ils
 
             foreach (var data in _dataSection)
             {
+                AddAsm($"{data.Value.name} {data.Value.word.shortName} {data.Value.var.value}");
                 if (data.Value.var.variableType.DataType == DataType.ARRAY)
                 {
-
-                    AddAsm($"{data.Value.name} {data.Value.word.shortName} {data.Value.var.value}");
-                }
-                else
-                {
-                    AddAsm($"{data.Value.name} {data.Value.word.shortName} {data.Value.var.value}");
+                    //ArrayVariable array = (ArrayVariable)data.Value.var;
+                    //AddAsm($"{data.Value.name}_length dw {array.arrayLength}");
                 }
             }
 
@@ -378,7 +460,6 @@ namespace ils
                                 var = namedVar
                             });
                             break;
-                            break;
                     }
                 }
                 else
@@ -386,18 +467,27 @@ namespace ils
                     _currentScope.GenerateStackVar(namedVar);
                     if (!namedVar.isFuncArg)
                     {
-                        string val = namedVar.value;
-
+                       
                         if (namedVar.variableType.DataType == DataType.IDENTIFIER)
+                        {
+                            Address destination = GetLocation(namedVar, GetLocationUseCase.MovedTo, false);
+                            Address source = GetLocation(IRGenerator._allVariables.Values
+                                    .Where(x => x.guid.ToString() == namedVar.value).First(),
+                                    GetLocationUseCase.None, false);
+                            
+                            AutoMov(destination, source);
+                        }
+                        else if(namedVar.indexedVar != null)
                         {
                             AutoMov(
                                 GetLocation(namedVar, GetLocationUseCase.MovedTo, false),
-                                GetLocation(IRGenerator._allVariables.Values.Where(x => x.guid.ToString() == namedVar.value).First(), GetLocationUseCase.None, false));
+                                GetLocation(namedVar.indexedVar, GetLocationUseCase.None, false)
+                            );
                         }
                         else
                         {
                             AutoMov(GetLocation(namedVar, GetLocationUseCase.MovedTo, false),
-                                new Address() { type = Address.Type.value, value = val });
+                                new Address() { Type = Address.AddressType.value, value = namedVar.value });
                         }
                     }
                 }
@@ -411,16 +501,8 @@ namespace ils
         public void GenerateTempVariable(Variable var)
         {
             Register reg;
-            if(var.needsPreservedReg)
-            {
-                reg = _availableRegs.DequeueItemWithCondition(i => i.isPreserved);
-            }
-            else
-            {
-                _availableRegs.TryDequeue(out reg);
-            }
-            _usedRegs.Add(var.variableName, reg);
 
+            reg = GetRegister(var.variableName, var.needsPreservedReg);          
 
             switch (var.variableType.DataType)
             {
@@ -429,25 +511,25 @@ namespace ils
                     break;
                 case DataType.INT:
                     AutoMov(
-                        new Address() { type = Address.Type.reg, reg = reg.regType },
-                        new Address() { type = Address.Type.value, value = var.value }
+                        new Address() { Type = Address.AddressType.reg, reg = reg.regType },
+                        new Address() { Type = Address.AddressType.value, value = var.value }
                         );
                     break;
                 case DataType.CHAR:
                     AutoMov(
-                       new Address() { type = Address.Type.reg, reg = reg.regType },
-                       new Address() { type = Address.Type.value, value = var.value }
+                       new Address() { Type = Address.AddressType.reg, reg = reg.regType },
+                       new Address() { Type = Address.AddressType.value, value = var.value }
                        );
                     break;
                 case DataType.BOOL:
                     AutoMov(
-                       new Address() { type = Address.Type.reg, reg = reg.regType },
-                       new Address() { type = Address.Type.value, value = var.value }
+                       new Address() { Type = Address.AddressType.reg, reg = reg.regType },
+                       new Address() { Type = Address.AddressType.value, value = var.value }
                        );
                     break;
                 case DataType.IDENTIFIER:
                     AutoMov(
-                       new Address() { type = Address.Type.reg, reg = reg.regType },
+                       new Address() { Type = Address.AddressType.reg, reg = reg.regType },
                        GetLocation(IRGenerator._allVariables[var.value], GetLocationUseCase.None, false)
                        );
                     break;
@@ -460,7 +542,15 @@ namespace ils
         private void GenerateAssign(IRAssign asign)
         {
             Address location = GetLocation(asign.identifier, GetLocationUseCase.MovedTo, false);
-            Address val = new Address() { type = Address.Type.value, value = asign.value } ;
+            Address val = new Address() { Type = Address.AddressType.value, value = asign.value } ;
+
+            /*if (asign.value.indexedVar != null)
+            {
+                AutoMov(
+                    GetLocation(namedVar, GetLocationUseCase.MovedTo, false),
+                    GetLocation(namedVar.indexedVar, GetLocationUseCase.None, false)
+                );
+            }*/ //TODO DODAC TUTAJ ARRAY INDEXY
 
             switch (asign.assignedType.DataType)
             {
@@ -468,7 +558,7 @@ namespace ils
                     //todo
                     break;
                 case DataType.INT:
-                    val = new Address() { type = Address.Type.value, value = asign.value };
+                    val = new Address() { Type = Address.AddressType.value, value = asign.value };
                     break;
                 case DataType.CHAR:
                     //AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
@@ -478,12 +568,11 @@ namespace ils
                     break;
                 case DataType.IDENTIFIER:
                     val = GetLocation(IRGenerator._allVariables.Values.Where(x => x.variableName == asign.value).First(), GetLocationUseCase.None, false);
-                    if (val.type == Address.Type.reg && val.reg == RegType.rbp)
+                    if (val.Type == Address.AddressType.reg && val.reg == RegType.rbp)
                     {
-                        Register reg = _availableRegs.Dequeue();
-                        _usedRegs.Add(Guid.NewGuid().ToString(), reg);
-                        AutoMov(new Address() { type = Address.Type.reg, reg = reg.regType }, val);
-                        val = new Address() { type = Address.Type.reg, reg = reg.regType };
+                        Register reg = GetRegister("", false);
+                        AutoMov(new Address() { Type = Address.AddressType.reg, reg = reg.regType }, val);
+                        val = new Address() { Type = Address.AddressType.reg, reg = reg.regType };
                         FreeReg(reg);
                     }
                     /*if (_dataSection.TryGetValue(asign.value, out ReservedVariable var))
@@ -525,24 +614,30 @@ namespace ils
                     AddAsm($"sub {locationString}, {bString}");
                     break;
                 case ArithmeticOpType.DIV:
-                    AutoMov(new Address() { type = Address.Type.reg, reg = RegType.rax }, a);
-                    AutoMov(new Address() { type = Address.Type.reg, reg = RegType.rbx }, b);
+                    AutoMov(new Address() { Type = Address.AddressType.reg, reg = RegType.rax }, a);
+                    AutoMov(new Address() { Type = Address.AddressType.reg, reg = RegType.rbx }, b);
                     AddAsm($"cqo");
                     AddAsm($"div rbx");
-                    AutoMov(location, new Address() { type = Address.Type.reg, reg = RegType.rax });
+                    AutoMov(location, new Address() { Type = Address.AddressType.reg, reg = RegType.rax });
                     break;
                 case ArithmeticOpType.MOD:
-                    AutoMov(new Address() { type = Address.Type.reg, reg = RegType.rax }, a);
-                    AutoMov(new Address() { type = Address.Type.reg, reg = RegType.rbx }, b);
+                    AutoMov(new Address() { Type = Address.AddressType.reg, reg = RegType.rax }, a);
+                    AutoMov(new Address() { Type = Address.AddressType.reg, reg = RegType.rbx }, b);
                     AddAsm($"cqo");
                     AddAsm($"div rbx");
-                    AutoMov(location, new Address() { type = Address.Type.reg, reg = RegType.rdx }); //TODO to sie wyjebie na 100% bo rdx jest jako wolny rejestr uzywane
+                    AutoMov(location, new Address() { Type = Address.AddressType.reg, reg = RegType.rdx }); //TODO to sie wyjebie na 100% bo rdx jest jako wolny rejestr uzywane
                     break;
             }
         }
 
         public void FreeReg(Register reg)
         {
+            if(_regs.ContainsKey(reg.regType))
+            {
+                Register r = _regs[reg.regType];
+                r.isAddress = false;
+                _regs[reg.regType] = r;
+            }
             _availableRegs.Enqueue(reg);
             _usedRegs.Remove(reg);
         }
@@ -592,8 +687,8 @@ namespace ils
                 else
                 {
                     aReg = _availableRegs.Dequeue();
-                    AutoMov(new Address() { type = Address.Type.reg, reg = aReg.regType }, compareA);
-                    compareA = new Address() { type = Address.Type.reg, reg = aReg.regType};
+                    AutoMov(new Address() { Type = Address.AddressType.reg, reg = aReg.regType }, compareA);
+                    compareA = new Address() { Type = Address.AddressType.reg, reg = aReg.regType};
                     _usedRegs.Add(Guid.NewGuid().ToString(), aReg);
                     FreeReg(aReg);
                 }
@@ -629,8 +724,8 @@ namespace ils
                 else
                 {
                     bReg = _availableRegs.Dequeue();
-                    AutoMov(new Address() { type = Address.Type.reg, reg = bReg.regType }, compareB);
-                    compareB = new Address() { type = Address.Type.reg, reg = bReg.regType };
+                    AutoMov(new Address() { Type = Address.AddressType.reg, reg = bReg.regType }, compareB);
+                    compareB = new Address() { Type = Address.AddressType.reg, reg = bReg.regType };
                     _usedRegs.Add(Guid.NewGuid().ToString(), bReg);
                     FreeReg(bReg);
                 }
@@ -670,7 +765,7 @@ namespace ils
 
         private void GenerateReturn(IRReturn ret)
         {
-             AutoMov(new Address() { type = Address.Type.reg, reg = RegType.rax }, GetLocation(ret.ret, GetLocationUseCase.None, false));
+             AutoMov(new Address() { Type = Address.AddressType.reg, reg = RegType.rax }, GetLocation(ret.ret, GetLocationUseCase.None, false));
         }
 
         private void GenerateScopeStart(IRScopeStart start)
@@ -710,17 +805,17 @@ namespace ils
 
         public string GetValueFromAddress(Address address)
         {
-            if(address.type == Address.Type.reg)
+            if(address.Type == Address.AddressType.reg)
             {
                 return address.reg.ToString();
             }
-            else if(address.type == Address.Type.memory)
+            else if(address.Type == Address.AddressType.memory)
             {
                 string prefix = address.prefix;
                 if (!string.IsNullOrEmpty(prefix)) prefix += " ";
                 return $"{prefix}[{address.address}]";
             }
-            else if(address.type == Address.Type.value)
+            else if(address.Type == Address.AddressType.value)
             {
                 return address.value;
             }
@@ -733,15 +828,27 @@ namespace ils
         {
             if (var is TempVariable temp)
             {
-                Register val;
-                if (_usedRegs.Forward.TryGet(temp.variableName, out val))
+                if (_usedRegs.Forward.TryGet(temp.variableName, out Register val))
                 {
-                    return new Address() { type = Address.Type.reg, reg = val.regType };
+                    /*if (useCase == GetLocationUseCase.Pointer)
+                    {
+                        return new Address()
+                        {
+                            Type = Address.AddressType.memory,
+                            address = val.regType.ToString()
+                        };
+                    }
+                    else
+                    {
+                        return new Address() { Type = Address.AddressType.reg, reg = val.regType };
+                    }*/
+
+                    return new Address() { Type = Address.AddressType.reg, reg = val.regType };
                 }
                 else
                 {
                     GenerateTempVariable(temp);
-                    return new Address() { type = Address.Type.reg, reg = _usedRegs.Forward[temp.variableName].regType };
+                    return new Address() { Type = Address.AddressType.reg, reg = _usedRegs.Forward[temp.variableName].regType };
                 }
             }
             else if (var is NamedVariable namedVar)
@@ -752,7 +859,7 @@ namespace ils
                     {
                         return new Address()
                         {
-                            type = Address.Type.memory,
+                            Type = Address.AddressType.memory,
                             address = _dataSection[namedVar.variableName].name,
                             prefix = _dataSection[namedVar.variableName].word.longName
                         };
@@ -760,7 +867,7 @@ namespace ils
 
                     return new Address()
                     {
-                        type = Address.Type.memory,
+                        Type = Address.AddressType.memory,
                         address = _dataSection[namedVar.variableName].name
                     };
                 }
@@ -777,7 +884,7 @@ namespace ils
                         {
                             return new Address()
                             {
-                                type = Address.Type.memory,
+                                Type = Address.AddressType.memory,
                                 address = $"rbp+{16 + _currentScope.stackvars[namedVar.guid.ToString()].offset * 8}",
                                 prefix = "qword"
                             };
@@ -786,7 +893,7 @@ namespace ils
                         {
                             return new Address()
                             {
-                                type = Address.Type.memory,
+                                Type = Address.AddressType.memory,
                                 address = $"rbp+{16 + _currentScope.stackvars[namedVar.guid.ToString()].offset * 8}",
                             };
                         }
@@ -799,7 +906,7 @@ namespace ils
                         {
                             return new Address()
                             {
-                                type = Address.Type.memory,
+                                Type = Address.AddressType.memory,
                                 address = $"rbp-{offset}",
                                 prefix = "qword"
                             };
@@ -808,12 +915,38 @@ namespace ils
                         {
                             return new Address()
                             {
-                                type = Address.Type.memory,
+                                Type = Address.AddressType.memory,
                                 address = $"rbp-{offset}",
                             };
                         }
                     }
                 }
+            }
+            else if (var is ArrayIndexedVariable indexed)
+            {
+                Address indexAddress = GetLocation(indexed.Index, GetLocationUseCase.None, true);
+                //Address arrayAddress = GetLocation(indexed, GetLocationUseCase.None, true);
+                // Register register = _availableRegs.Dequeue();
+                //_usedRegs.Add(Guid.NewGuid().ToString(), register);
+                //Address result = new Address() { Type = Address.AddressType.reg, reg = register.regType };
+                switch (indexAddress.Type)
+                {
+                    case Address.AddressType.reg:
+                        AddAsm($"mov rsi, [{indexed.Array.variableName} + {indexAddress.reg} * 8]");
+                        break;
+                    case Address.AddressType.memory:
+                        AddAsm($"mov rsi, [{indexed.Array.variableName} + {indexAddress.address}]");
+                        break;
+                    case Address.AddressType.value:
+                        AddAsm($"mov rsi, [{indexed.Array.variableName} + {indexAddress.value}]");
+                        break;
+                }
+               
+                return new Address()
+                {
+                    Type = Address.AddressType.reg,
+                    reg = RegType.rsi
+                };
             }
             else if (var is LiteralVariable lit && generateLiteral)
             {
@@ -821,7 +954,7 @@ namespace ils
                 {
                     return new Address()
                     {
-                        type = Address.Type.value,
+                        Type = Address.AddressType.value,
                         value = lit.value,
                     };
                 }
@@ -830,7 +963,7 @@ namespace ils
                 {
                     return new Address()
                     {
-                        type = Address.Type.reg,
+                        Type = Address.AddressType.reg,
                         reg = val.regType
                     };
                 }
@@ -840,7 +973,7 @@ namespace ils
 
                     return new Address()
                     {
-                        type = Address.Type.reg,
+                        Type = Address.AddressType.reg,
                         reg = _usedRegs.Forward[lit.variableName].regType
                     };
                 }
@@ -852,14 +985,14 @@ namespace ils
 
                 return new Address()
                 {
-                    type = Address.Type.reg,
+                    Type = Address.AddressType.reg,
                     reg = RegType.rax
                 };
             }
 
             return new Address()
             {
-                type = Address.Type.value,
+                Type = Address.AddressType.value,
                 value = var.value
             };
         }

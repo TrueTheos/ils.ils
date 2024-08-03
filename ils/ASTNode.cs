@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualBasic;
+﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.VisualBasic;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -113,14 +114,15 @@ namespace ils
     {
         public List<ASTExpression> values;
         public TypeSystem.Type type;
-        public ASTArrayConstructor(List<ASTExpression> vals, TypeSystem.Type type) { this.values = vals; this.type = type; }
+        public int length;
+        public ASTArrayConstructor(List<ASTExpression> vals, TypeSystem.Type type, int length) { this.values = vals; this.type = type; this.length = length; }
     }
 
-    public record ASTArrayIndex : ASTStatement
+    public record ASTArrayIndex : ASTExpression
     {
-        public ASTExpression index;
-        public Token identifier;
-        public ASTArrayIndex(ASTExpression index, Token identifier) { this.index = index; this.identifier = identifier; }
+        public ASTExpression Index;
+        public Token Identifier;
+        public ASTArrayIndex(ASTExpression index, Token identifier) { this.Index = index; this.Identifier = identifier; }
     }
 
 

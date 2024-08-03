@@ -3,11 +3,18 @@ array: [int] = {1+1,2,3,4,5};
 
 fun test()
 {
-	
+	//@println(array[1]);
 }
 
 fun main() -> int
 {
-	@println(integer);
+	//x:int = integer;
+	x: int = 1;
+	@println(x);
+	x = integer;
+	@println(x);
+	x = array[2];
+	@println(x);
+	//@println(integer + integer * 2 + array[1]);
 	return 0;
 }

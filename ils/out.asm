@@ -2,8 +2,10 @@ global main
 main:
 	push rbp
 	mov rbp, rsp
+	sub rsp, 8
 	.FUNC_MAIN_START:
-	mov rbx, [integer]
+	mov qword [rbp-8], 1
+	mov rbx, [rbp-8]
 	mov rdi, intFormatNl
 	mov rsi, rbx
 	mov rax, 0

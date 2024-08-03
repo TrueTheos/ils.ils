@@ -84,4 +84,19 @@ namespace ils
             return $"[{line}] {name}: {_message}";
         }
     }
+
+    public class VariableDoesntExistError : CustomError
+    {
+        private string _varName;
+
+        public VariableDoesntExistError(string name, int line) : base(4, "VariableDoesntExistError", line)
+        {
+            _varName = name;
+        }
+
+        public override string Throw()
+        {
+            return $"[{line}] {name}: Variable {_varName} doesn't exist!";
+        }
+    }
 }

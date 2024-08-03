@@ -78,21 +78,21 @@ namespace ils
                 }
 
                 ILS.asmGen.AutoMov(
-                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rax},
-                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.value, value = "60"}
+                    new ASMGenerator.Address() { Type = ASMGenerator.Address.AddressType.reg, reg = ASMGenerator.RegType.rax},
+                    new ASMGenerator.Address() { Type = ASMGenerator.Address.AddressType.value, value = "60"}
                     );
 
                 if (arg is LiteralVariable)
                 {
                     ILS.asmGen.AutoMov(
-                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rdi },
-                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.value, value = arg.value }
+                    new ASMGenerator.Address() { Type = ASMGenerator.Address.AddressType.reg, reg = ASMGenerator.RegType.rdi },
+                    new ASMGenerator.Address() { Type = ASMGenerator.Address.AddressType.value, value = arg.value }
                     );
                 }
                 else
                 {
                     ILS.asmGen.AutoMov(
-                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rdi },
+                    new ASMGenerator.Address() { Type = ASMGenerator.Address.AddressType.reg, reg = ASMGenerator.RegType.rdi },
                     ILS.asmGen.GetLocation(arg, ASMGenerator.GetLocationUseCase.None, false)
                     );
                 }
@@ -143,18 +143,18 @@ namespace ils
                 format = GetFormat(msg);
 
                 ILS.asmGen.AutoMov(
-                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rdi },
-                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.value, value = format }
+                    new ASMGenerator.Address() { Type = ASMGenerator.Address.AddressType.reg, reg = ASMGenerator.RegType.rdi },
+                    new ASMGenerator.Address() { Type = ASMGenerator.Address.AddressType.value, value = format }
                     );
 
                 ILS.asmGen.AutoMov(
-                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rsi },
-                    ILS.asmGen.GetLocation(msg, ASMGenerator.GetLocationUseCase.None, false)
-                    );
+                    new ASMGenerator.Address() { Type = ASMGenerator.Address.AddressType.reg, reg = ASMGenerator.RegType.rsi },
+                    ILS.asmGen.GetLocation(msg, ASMGenerator.GetLocationUseCase.None, false),
+                    needsAddress: false);
 
                 ILS.asmGen.AutoMov(
-                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rax },
-                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.value, value = "0" }
+                    new ASMGenerator.Address() { Type = ASMGenerator.Address.AddressType.reg, reg = ASMGenerator.RegType.rax },
+                    new ASMGenerator.Address() { Type = ASMGenerator.Address.AddressType.value, value = "0" }
                     );
 
                 ILS.asmGen.AddAsm($"call {libcName}");
@@ -205,13 +205,13 @@ namespace ils
                 //ILS.asmGen.Mov("rax", "0");
 
                 ILS.asmGen.AutoMov(
-                    new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rdi },
+                    new ASMGenerator.Address() { Type = ASMGenerator.Address.AddressType.reg, reg = ASMGenerator.RegType.rdi },
                     ILS.asmGen.GetLocation(msg, ASMGenerator.GetLocationUseCase.None, false)
                     );
 
                 ILS.asmGen.AutoMov(
-                   new ASMGenerator.Address() { type = ASMGenerator.Address.Type.reg, reg = ASMGenerator.RegType.rax },
-                   new ASMGenerator.Address() { type = ASMGenerator.Address.Type.value, value = "0" }
+                   new ASMGenerator.Address() { Type = ASMGenerator.Address.AddressType.reg, reg = ASMGenerator.RegType.rax },
+                   new ASMGenerator.Address() { Type = ASMGenerator.Address.AddressType.value, value = "0" }
                    );
 
                 ILS.asmGen.AddAsm($"call {libcName}");

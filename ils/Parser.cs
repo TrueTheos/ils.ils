@@ -57,6 +57,25 @@ namespace ils
                         return funcCall;
                     }
                 }
+                else if(Expect(TokenType.OPEN_SQUARE, 1))
+                {
+                    ASTArrayIndex arrIndex;
+                    Token identifier = Consume();
+
+                    Consume();
+                    ASTExpression expr = ParseExpression();
+
+                    if (expr == null)
+                    {
+                        ErrorHandler.Throw(new ExpectedError("expression", Peek().TokenType.ToString(), Peek().Line));
+                        return null;
+                    }
+
+                    TryConsumeErr(TokenType.CLOSE_SQUARE);
+
+                    return new ASTArrayIndex(expr, identifier);
+
+                }
 
                 return new ASTIdentifier(Consume());
             }
@@ -173,7 +192,7 @@ namespace ils
 
             ASTScope scope = new ASTScope(null, parentScope, scopeType);
             _currentScope = scope;
-            while (ParseStatement() is ASTStatement stmt && stmt != null)
+            while (ParseStatement() is ASTStatement stmt)
             {
                 statements.Add(stmt);
             }
@@ -338,7 +357,7 @@ namespace ils
 
                 ArrayType arrayType = new();
                 arrayType.elementType = TypeSystem.GetTypeFromToken(elementType);
-                arrayType.size = size;
+                arrayType.length = size;
 
                 return arrayType;
             }
@@ -362,7 +381,10 @@ namespace ils
                     ASTExpression expr = ParseExpression();
                     if (expr != null)
                     {
-                        if (variableType is PrimitiveType primitiveType) primitiveType.CanAssignLiteral(expr, identifier.Line);
+                        if (variableType is PrimitiveType primitiveType && expr is ASTLiteral)
+                        {
+                            primitiveType.CanAssignLiteral(expr, identifier.Line);
+                        }
 
                         value = expr;
                     }
@@ -407,9 +429,11 @@ namespace ils
                         }
                     }
 
+                    if (array.length != -1 && initialValues.Count > array.length) ErrorHandler.Custom($"Wrong amount of elements in array. Provided {initialValues.Count}, expected {array.length}");
+                    if (array.length == -1) array.length = initialValues.Count;
                     TryConsumeErr(TokenType.CLOSE_CURLY);
                     TryConsumeErr(TokenType.SEMICOLON);
-                    value = new ASTArrayConstructor(initialValues, variableType);
+                    value = new ASTArrayConstructor(initialValues, variableType, array.length);
                 }
             }
             else
@@ -429,9 +453,9 @@ namespace ils
 
             if(variableType is ArrayType arrayType && value is ASTArrayDeclaration arrayDeclaration)
             {
-                if (arrayType.size == -1 && arrayDeclaration.initialValues != null)
+                if (arrayType.length == -1 && arrayDeclaration.initialValues != null)
                 {
-                    arrayType.size = arrayDeclaration.initialValues.Count;
+                    arrayType.length = arrayDeclaration.initialValues.Count;
                 }
             }
 
@@ -520,24 +544,6 @@ namespace ils
                     ASTFunctionCall call = ParseFunctionCall();
                     TryConsumeErr(TokenType.SEMICOLON);
                     return call;
-                }
-
-                if(Expect(TokenType.OPEN_SQUARE,1))
-                {
-                    Token identifier = Consume();
-                    Consume();
-
-                    ASTExpression expr = ParseExpression();
-
-                    if (expr == null)
-                    {
-                        ErrorHandler.Throw(new ExpectedError("expression", Peek().TokenType.ToString(), Peek().Line));
-                        return null;
-                    }
-
-                    TryConsumeErr(TokenType.CLOSE_SQUARE);
-
-                    return new ASTArrayIndex(expr, identifier);
                 }
             }
 

@@ -36,16 +36,16 @@ class ILS
             Tokenizer tokenizer = new();
             List<Token> tokens = tokenizer.Tokenize(source);
 
-            //int line = 1;
-            //foreach (Token token in tokens)
-            //{
-            //    if (token.Line != line)
-            //    {
-            //        line = token.Line;
-            //        Console.Write("\n");
-            //    }
-            //    Console.Write(token.TokenType.ToString() + " ");            
-            //}
+            int line = 1;
+            foreach (Token token in tokens)
+            {
+                if (token.Line != line)
+                {
+                    line = token.Line;
+                    Console.Write("\n");
+                }
+                Console.Write(token.TokenType.ToString() + " ");            
+            }
 
             Parser parser = new();
             ASTScope mainScope = parser.Parse(tokens);
