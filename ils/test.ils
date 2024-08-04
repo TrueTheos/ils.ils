@@ -8,7 +8,7 @@ fun sum(a:int, b:int) -> int
 
 fun test()
 {
-	@println("Test");
+	@println("Hello world!");
 }
 
 fun main() -> int
@@ -20,5 +20,15 @@ fun main() -> int
 	@println(x);
 	x = array[2];
 	@println(x);
+
+	while(integer > 0)
+	{
+		if(integer % 2 == 0)
+		{
+			@println(integer);
+		}
+		integer = integer - 1;
+	}
+
 	return 0;
 }

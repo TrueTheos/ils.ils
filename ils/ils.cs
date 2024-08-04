@@ -17,13 +17,6 @@ class ILS
 
     static void Main(string[] args)
     {
-        /*var config = DefaultConfig.Instance
-            .AddJob(Job
-                 .WithLaunchCount(1)
-                 .WithToolchain(InProcessEmitToolchain.Instance));*/
-        //var summary = BenchmarkRunner.Run<BenchmarkMyStuff>();
-
-        
         if (File.Exists(SOURCE_FILE))
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
