@@ -10,6 +10,21 @@ main:
 	mov rsi, rbx
 	mov rax, 0
 	call printf
+	mov r8, [integer]
+	mov qword [rbp-8], r8
+	mov r12, [rbp-8]
+	mov rdi, intFormatNl
+	mov rsi, r12
+	mov rax, 0
+	call printf
+	mov r13, 2
+	mov rsi, [array + r13 * 8]
+	mov qword [rbp-8], rsi
+	mov r14, [rbp-8]
+	mov rdi, intFormatNl
+	mov rsi, r14
+	mov rax, 0
+	call printf
 	mov rax, 0
 	jmp .FUNC_main_END
 	.FUNC_main_END:

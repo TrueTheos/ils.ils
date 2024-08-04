@@ -544,13 +544,15 @@ namespace ils
             Address location = GetLocation(asign.identifier, GetLocationUseCase.MovedTo, false);
             Address val = new Address() { Type = Address.AddressType.value, value = asign.value } ;
 
-            /*if (asign.value.indexedVar != null)
+            if (asign.indexedArray != null)
             {
                 AutoMov(
-                    GetLocation(namedVar, GetLocationUseCase.MovedTo, false),
-                    GetLocation(namedVar.indexedVar, GetLocationUseCase.None, false)
+                    location,
+                    GetLocation(asign.indexedArray, GetLocationUseCase.None, false)
                 );
-            }*/ //TODO DODAC TUTAJ ARRAY INDEXY
+
+                return;
+            } //TODO DODAC TUTAJ ARRAY INDEXY
 
             switch (asign.assignedType.DataType)
             {

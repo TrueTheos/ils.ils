@@ -490,7 +490,12 @@ public class IRGenerator
                 //_IR.Add(new IRAssign(saveLocation, regVar.value.ToString(), regVar.variableType));
                 AddIR(new IRAssign(saveLocation, funcVar.variableName, Types[DataType.IDENTIFIER]));
             if (var is ArrayIndexedVariable indexVar)
-                AddIR(new IRAssign(saveLocation, indexVar.Index.ToString(), Types[DataType.IDENTIFIER]));
+            {
+                var asgn = new IRAssign(saveLocation, indexVar.Index.ToString(), Types[DataType.IDENTIFIER]);
+                asgn.indexedArray = indexVar;
+
+                AddIR(asgn);
+            }             
         }
     }
 
@@ -1092,6 +1097,7 @@ public class IRGenerator
         public Variable identifier;
         public TypeSystem.Type assignedType;
         public string value;
+        public ArrayIndexedVariable indexedArray; //todo fix
 
         public IRAssign(Variable identifier, string value, TypeSystem.Type assignedType)
         {
