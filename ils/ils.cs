@@ -21,7 +21,6 @@ class ILS
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            // Read all lines from the file
             string source = File.ReadAllText(SOURCE_FILE);
 
             if (source.Last() != '\n') source += '\n';
@@ -42,9 +41,6 @@ class ILS
 
             Parser parser = new();
             ASTScope mainScope = parser.Parse(tokens);
-
-            Verificator verificator = new Verificator();
-            verificator.Verify(mainScope);
 
             irGen = new();
             var ir = irGen.Generate(mainScope);

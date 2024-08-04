@@ -11,11 +11,6 @@ namespace ils
     {
         public static readonly List<string> RESERVED_KEYWORDS = ["WHILE", "str", "char", "int", "bool", "while", "break", "else", "elif", "if", "true", "false"];
 
-        public void Verify(ASTScope mainScope)
-        {
-            //CheckKeywordUsage(mainScope);
-        }
-
         /// <summary>
         /// Checks if any variable is named after a keyword.
         /// </summary>
