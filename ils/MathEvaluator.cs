@@ -31,7 +31,7 @@ namespace ils
         {
             if (node is ASTIntLiteral intLiteral)
             {
-                return intLiteral.value.ToString();
+                return intLiteral.Value.ToString();
             }
             else if (node is ASTArithmeticOperation operation)
             {

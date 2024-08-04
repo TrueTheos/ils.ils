@@ -77,15 +77,15 @@ namespace ils
                     default: ErrorHandler.Custom($"Function '{name}' requires int as argument!"); break;
                 }
 
-                ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(ASMGenerator.RegType.rax), new ASMGenerator.ValueAddress("60"));
+                ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(RegType.rax), new ASMGenerator.ValueAddress("60"));
 
                 if (arg is LiteralVariable)
                 {
-                    ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(ASMGenerator.RegType.rdi), new ASMGenerator.ValueAddress(arg.value));
+                    ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(RegType.rdi), new ASMGenerator.ValueAddress(arg.value));
                 }
                 else
                 {
-                    ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(ASMGenerator.RegType.rdi), ILS.asmGen.GetLocation(arg, ASMGenerator.GetLocationUseCase.None, false));
+                    ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(RegType.rdi), ILS.asmGen.GetLocation(arg, ASMGenerator.GetLocationUseCase.None, false));
                 }
 
                 ILS.asmGen.AddAsm("syscall");
@@ -115,7 +115,7 @@ namespace ils
                     case DataType.BOOL:
                         return "intFormatNl";
                     case DataType.IDENTIFIER:
-                        return GetFormat(IRGenerator._allVariables[var.value]);
+                        return GetFormat(IRGenerator._AllVariables[var.value]);
                     case DataType.ARRAY:
                         ErrorHandler.Custom("Can't print arrays!");
                         return null;
@@ -126,20 +126,16 @@ namespace ils
 
             public override void GenerateASM(List<Variable> arguments)
             {
-                string format = "";
-
                 Variable msg = arguments[0];
 
-                format = GetFormat(msg);
-
-                ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(ASMGenerator.RegType.rdi), new ASMGenerator.ValueAddress(format));
+                ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(RegType.rdi), new ASMGenerator.ValueAddress(GetFormat(msg)));
 
                 ILS.asmGen.AutoMov(
-                    new ASMGenerator.RegAddress(ASMGenerator.RegType.rsi),
+                    new ASMGenerator.RegAddress(RegType.rsi),
                     ILS.asmGen.GetLocation(msg, ASMGenerator.GetLocationUseCase.None, false),
                     needsAddress: false);
 
-                ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(ASMGenerator.RegType.rax), new ASMGenerator.ValueAddress("0"));
+                ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(RegType.rax), new ASMGenerator.ValueAddress("0"));
 
                 ILS.asmGen.AddAsm($"call {libcName}");
             }
@@ -159,8 +155,8 @@ namespace ils
             {
                 Variable msg = arguments[0];
 
-                ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(ASMGenerator.RegType.rdi), ILS.asmGen.GetLocation(msg, ASMGenerator.GetLocationUseCase.None, false));
-                ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(ASMGenerator.RegType.rax),new ASMGenerator.ValueAddress("0"));
+                ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(RegType.rdi), ILS.asmGen.GetLocation(msg, ASMGenerator.GetLocationUseCase.None, false));
+                ILS.asmGen.AutoMov(new ASMGenerator.RegAddress(RegType.rax),new ASMGenerator.ValueAddress("0"));
                 ILS.asmGen.AddAsm($"call {libcName}");
             }
         }

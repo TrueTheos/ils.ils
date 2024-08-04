@@ -74,13 +74,13 @@ namespace ils
                     return false;
                 }
 
-                if(literal.variableType != null && literal.variableType.DataType == DataType)
+                if(literal.VariableType != null && literal.VariableType.DataType == DataType)
                 {
                     return true;
                 }
                 else
                 {
-                    ErrorHandler.Throw(new ExpectedError(DataType.ToString(), literal.variableType.DataType.ToString(), line));
+                    ErrorHandler.Throw(new ExpectedError(DataType.ToString(), literal.VariableType.DataType.ToString(), line));
                     return false;
                 }
             }

@@ -61,16 +61,12 @@ namespace ils
         }
 
         private void EliminateUnusedFunctions()
-        {
-            List<IRFunctionCall> funcCalls = ir.Where(x => x is IRFunctionCall).Select(x => x as IRFunctionCall).ToList();
-
-            List<IRFunction> functions = ir.Where(x => x is IRFunction func && func.name != MAIN_FUNCTION_NAME).Select(x => x as IRFunction).ToList();
-
-            foreach (var function in functions)
+        {;
+            foreach (var function in IRGenerator._Functions)
             {
-                if(!funcCalls.Any(x => x.name == function.name))
+                if(function.Value.Name != IRGenerator.MAIN_FUNCTION_NAME && !function.Value.WasUsed)
                 {
-                    foreach (var node in function.nodes)
+                    foreach (var node in function.Value.Nodes)
                     {
                         ir.Remove(node);
                     }
@@ -106,7 +102,7 @@ namespace ils
                     node.branches.Add(new(node, blocks[jump.label], jump.conditionType));
                     blocks[jump.label].parentNodes.Add(node);
 
-                    if (jump.conditionType == ASTCondition.ConditionType.NONE) return;
+                    if (jump.conditionType == ConditionType.NONE) return;
                 }
                 else if (instruction is IRLabel label && i != node.startIndex)
                 {

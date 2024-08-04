@@ -22,108 +22,86 @@ namespace ils
             { 8, new Word(){ ShortVarSize = Word.ShortVariableSize.dq, LongVarSize = "qword"} }
         };
 
-        private readonly Dictionary<RegType, Register> _allRegs = new()
+        //ALL REGISTERS IN NASM
+        private readonly Dictionary<RegType, Register> allRegs = new()
         {
-            {RegType.rcx, new() { regType = RegType.rcx, isPreserved =  false}},
-            {RegType.rsi, new() { regType = RegType.rsi, isPreserved =  false}},
-            {RegType.rbp, new() { regType = RegType.rbp, isPreserved = true }},
-            {RegType.rdx, new() { regType = RegType.rdx, isPreserved =  false}},
-            {RegType.rsp, new() { regType = RegType.rsp, isPreserved = true }},
-            {RegType.rbx, new() { regType = RegType.rbx, isPreserved =  true}},
-            {RegType.r8, new()  { regType = RegType.r8,   isPreserved =  false}},
-            {RegType.r9, new()  { regType = RegType.r9,   isPreserved =  false}},
-            {RegType.r10, new() { regType = RegType.r10, isPreserved =  false}},
-            {RegType.r11, new() { regType = RegType.r11, isPreserved =  false}},
-            {RegType.r12, new() { regType = RegType.r12, isPreserved =  true}},
-            {RegType.r13, new() { regType = RegType.r13, isPreserved =  true}},
-            {RegType.r14, new() { regType = RegType.r14, isPreserved =  true}},
-            {RegType.r15, new() { regType = RegType.r15, isPreserved = true }},
+            {RegType.rax, new() { Type = RegType.rax, IsPreserved =  false}},
+            {RegType.rcx, new() { Type = RegType.rcx, IsPreserved =  false}},
+            {RegType.rsi, new() { Type = RegType.rsi, IsPreserved =  false}},
+            {RegType.rbp, new() { Type = RegType.rbp, IsPreserved =  true }},
+            {RegType.rdx, new() { Type = RegType.rdx, IsPreserved =  false}},
+            {RegType.rsp, new() { Type = RegType.rsp, IsPreserved =  true }},
+            {RegType.rbx, new() { Type = RegType.rbx, IsPreserved =  true}},
+            {RegType.r8,  new() { Type = RegType.r8,  IsPreserved =  false}},
+            {RegType.r9,  new() { Type = RegType.r9,  IsPreserved =  false}},
+            {RegType.r10, new() { Type = RegType.r10, IsPreserved =  false}},
+            {RegType.r11, new() { Type = RegType.r11, IsPreserved =  false}},
+            {RegType.r12, new() { Type = RegType.r12, IsPreserved =  true}},
+            {RegType.r13, new() { Type = RegType.r13, IsPreserved =  true}},
+            {RegType.r14, new() { Type = RegType.r14, IsPreserved =  true}},
+            {RegType.r15, new() { Type = RegType.r15, IsPreserved =  true }},
         };
 
-        private readonly Dictionary<RegType, Register> _regs = new()
+        //Registers that we can use and that are not reserved
+        private readonly Dictionary<RegType, Register> notReservedRegs = new()
         {
-            {RegType.rcx, new() { regType = RegType.rcx, isPreserved =  false}},
-            {RegType.rdx, new() { regType = RegType.rdx, isPreserved =  false}},
-            {RegType.rbx, new() { regType = RegType.rbx, isPreserved =  true}},
-            {RegType.r8, new()  { regType = RegType.r8,  isPreserved =  false}},
-            {RegType.r9, new()  { regType = RegType.r9,  isPreserved =  false}},
-            {RegType.r10, new() { regType = RegType.r10, isPreserved =  false}},
-            {RegType.r11, new() { regType = RegType.r11, isPreserved =  false}},
-            {RegType.r12, new() { regType = RegType.r12, isPreserved =  true}},
-            {RegType.r13, new() { regType = RegType.r13, isPreserved =  true}},
-            {RegType.r14, new() { regType = RegType.r14, isPreserved =  true}},
-            {RegType.r15, new() { regType = RegType.r15, isPreserved = true }},
+            {RegType.rcx, new() { Type = RegType.rcx, IsPreserved =  false}},
+            {RegType.rdx, new() { Type = RegType.rdx, IsPreserved =  false}},
+            {RegType.rbx, new() { Type = RegType.rbx, IsPreserved =  true}},
+            {RegType.r8,  new() { Type = RegType.r8,  IsPreserved =  false}},
+            {RegType.r9,  new() { Type = RegType.r9,  IsPreserved =  false}},
+            {RegType.r10, new() { Type = RegType.r10, IsPreserved =  false}},
+            {RegType.r11, new() { Type = RegType.r11, IsPreserved =  false}},
+            {RegType.r12, new() { Type = RegType.r12, IsPreserved =  true}},
+            {RegType.r13, new() { Type = RegType.r13, IsPreserved =  true}},
+            {RegType.r14, new() { Type = RegType.r14, IsPreserved =  true}},
+            {RegType.r15, new() { Type = RegType.r15, IsPreserved =  true }},
         };
 
-        public enum RegType
-        {
-            rcx, rdx, rbx, r8, r9, r10, r11, r12, r13, r14, r15, rbp, rsp, rax, rdi, rsi
-        }
+        private Queue<Register> freeRegs = new();
+        private Map<string, Register> occupiedRegs = new();
 
-        public struct Register
-        {
-            public RegType regType;
-            public bool isPreserved;
-            public bool isAddress; //if false then it means that it contains a value, if true then an address
-        }
+        private List<string> asm = new();
 
-        public Queue<Register> AvailableRegs = new();
-        public Map<string, Register> OccupiedRegs = new();
+        private Dictionary<string, ReservedVariable> dataSection = new();
 
-        public List<string> Asm = new();
-
-        public Dictionary<string, ReservedVariable> DataSection = new();
-
-        public Scope CurrentScope;
+        private Scope currentScope;
 
         private IRFunction currentFunc;
 
         public class Scope
         {
-            public int id;
+            public int ID;
 
-            public List<Register> vars = new();
-            public Dictionary<string, StackVar> stackvars = new();
+            public List<Register> Vars = new();
+            public Dictionary<string, StackVar> StackVars = new();
 
-            public int stackSize = 0;
+            private int stackSize = 0;
 
             public Scope(int id)
             {
-                this.id = id;
+                ID = id;
             }
 
             public void GenerateStackVar(NamedVariable arg)
             {
-                if(stackvars.ContainsKey(arg.guid.ToString()))
+                if(StackVars.ContainsKey(arg.guid.ToString()))
                 {
                     return;
                 }
 
-                stackvars.Add(arg.guid.ToString(), new StackVar() { offset = stackSize, var = arg });
+                StackVars.Add(arg.guid.ToString(), new StackVar() { Offset = stackSize, var = arg });
                 stackSize++;
             }
 
             public struct StackVar
             {
-                public int offset;
+                public int Offset;
                 public Variable var;
             }
         }
 
-        /*private void Push(string v)
-        {
-            AddAsm($"push {v}");
-            _stackSize++;
-        }
-
-        private void Pop(string v)
-        {
-            AddAsm($"pop {v}");
-            _stackSize--;
-        }*/
-
-
-        private string lastMoveDestination = "";
+        //private string lastMoveDestination = "";
 
         public enum MovType 
         {
@@ -181,14 +159,14 @@ namespace ils
 
             if(needsPreservedReg)
             {
-                Register reg = AvailableRegs.DequeueItemWithCondition(i => i.isPreserved);
-                OccupiedRegs.Add(name, reg);
+                Register reg = freeRegs.DequeueItemWithCondition(i => i.IsPreserved);
+                occupiedRegs.Add(name, reg);
                 return reg;
             }
             else
             {
-                Register reg = AvailableRegs.Dequeue();
-                OccupiedRegs.Add(name, reg);
+                Register reg = freeRegs.Dequeue();
+                occupiedRegs.Add(name, reg);
                 return reg;
             }           
         }
@@ -205,9 +183,9 @@ namespace ils
             if (!string.IsNullOrEmpty(preffix)) preffix += " ";
 
             AddAsm($"mov {destination.Reg}, {preffix}[{source.Address}]");
-            Register r = _allRegs[destination.Reg];
-            r.isAddress = false;
-            _allRegs[destination.Reg] = r;
+            Register r = allRegs[destination.Reg];
+            r.IsAddress = false;
+            allRegs[destination.Reg] = r;
         }
 
         //register <- register
@@ -219,7 +197,7 @@ namespace ils
             if (a is RegAddress) destination = (RegAddress)a; else throw new Exception();
             if (b is RegAddress) source = (RegAddress)b; else throw new Exception();
 
-            if (_allRegs[source.Reg].isAddress)
+            if (allRegs[source.Reg].IsAddress)
             {
                 AddAsm($"mov {destination.Reg}, [{source.Reg}]");
             }
@@ -228,9 +206,9 @@ namespace ils
                 AddAsm($"mov {destination.Reg}, {source.Reg}");
             }
 
-            Register r = _allRegs[destination.Reg];
-            r.isAddress = _allRegs[source.Reg].isAddress;
-            _allRegs[destination.Reg] = r;        
+            Register r = allRegs[destination.Reg];
+            r.IsAddress = allRegs[source.Reg].IsAddress;
+            allRegs[destination.Reg] = r;        
         }
 
         //memory <- register
@@ -275,8 +253,8 @@ namespace ils
                 if(source.Type == Address.AddressType.MEMORY)
                 {
                     Register reg = GetRegister("", false);
-                    AutoMov(new RegAddress(reg.regType), source);
-                    AutoMov(destination, new RegAddress(reg.regType));
+                    AutoMov(new RegAddress(reg.Type), source);
+                    AutoMov(destination, new RegAddress(reg.Type));
                     FreeReg(reg);
                     return;
                 }
@@ -324,9 +302,9 @@ namespace ils
 
         public string GenerateASM(List<IRNode> ir)
         {
-            foreach (var reg in _regs.Values)
+            foreach (var reg in notReservedRegs.Values)
             {
-                AvailableRegs.Enqueue(reg);
+                freeRegs.Enqueue(reg);
             }
 
             AddAsm("global main", 0);
@@ -345,15 +323,15 @@ namespace ils
             AddAsm("intFormatNl db \"%d\", 10, 0");
             AddAsm("charFormatNl db \"%c\", 10, 0");
 
-            if (StringLiterals.Forward.Count > 0)
+            if (_StringLiterals.Forward.Count > 0)
             {
-                foreach (var strlit in StringLiterals.Forward.GetDictionary())
+                foreach (var strlit in _StringLiterals.Forward.GetDictionary())
                 {
                     AddAsm($"{strlit.Key} db `{strlit.Value}`");
                 }
             }
 
-            foreach (var data in DataSection)
+            foreach (var data in dataSection)
             {
                 AddAsm($"{data.Value.Name} {data.Value.Word.ShortVarSize} {data.Value.Var.value}");
                 if (data.Value.Var.variableType.DataType == DataType.ARRAY)
@@ -372,30 +350,30 @@ namespace ils
 
             //Console.WriteLine('\n' + string.Join("", asm));
 
-            return string.Join("", Asm);
+            return string.Join("", asm);
         }
 
         public void AddAsm(string code, int tabsCount = 1)
         {
             string tabs = new string('\t', tabsCount);
-            Asm.Add(tabs + code + '\n');
+            asm.Add(tabs + code + '\n');
             //Console.WriteLine(tabs + code + '\n');
         }
 
         public void ReplaceLastAsm(string code, int tabsCount = 1)
         {
             string tabs = new string('\t', tabsCount);
-            Asm[Asm.Count - 1] = tabs + code + '\n';
+            asm[asm.Count - 1] = tabs + code + '\n';
         }
 
         private bool VarExists(string name)
         {
-            return DataSection.ContainsKey(name);
+            return dataSection.ContainsKey(name);
         }
 
         private void GenerateFunction(IRFunction func)
         {
-            AddAsm($"{func.name}:", 0);
+            AddAsm($"{func.Name}:", 0);
 
             currentFunc = func;
             /*foreach (var node in func.nodes)
@@ -442,7 +420,7 @@ namespace ils
                     switch (namedVar.variableType.DataType)
                     {
                         case DataType.CHAR:
-                            DataSection.Add(namedVar.variableName, new ReservedVariable()
+                            dataSection.Add(namedVar.variableName, new ReservedVariable()
                             {
                                 Name = namedVar.variableName,
                                 Word = words[1],
@@ -450,7 +428,7 @@ namespace ils
                             });
                             break;
                         case DataType.INT:
-                            DataSection.Add(namedVar.variableName, new ReservedVariable()
+                            dataSection.Add(namedVar.variableName, new ReservedVariable()
                             {
                                 Name = namedVar.variableName,
                                 Word = words[8],
@@ -458,7 +436,7 @@ namespace ils
                             });
                             break;
                         case DataType.BOOL:
-                            DataSection.Add(namedVar.variableName, new ReservedVariable()
+                            dataSection.Add(namedVar.variableName, new ReservedVariable()
                             {
                                 Name = namedVar.variableName,
                                 Word = words[1],
@@ -466,7 +444,7 @@ namespace ils
                             });
                             break;
                         case DataType.STRING:
-                            DataSection.Add(namedVar.variableName, new ReservedVariable()
+                            dataSection.Add(namedVar.variableName, new ReservedVariable()
                             {
                                 Name = namedVar.variableName,
                                 Word = words[8],
@@ -474,7 +452,7 @@ namespace ils
                             });
                             break;
                         case DataType.ARRAY:
-                            DataSection.Add(namedVar.variableName, new ReservedVariable()
+                            dataSection.Add(namedVar.variableName, new ReservedVariable()
                             {
                                 Name = namedVar.variableName,
                                 Word = words[8],
@@ -485,14 +463,14 @@ namespace ils
                 }
                 else
                 {
-                    CurrentScope.GenerateStackVar(namedVar);
+                    currentScope.GenerateStackVar(namedVar);
                     if (!namedVar.isFuncArg)
                     {
                        
                         if (namedVar.variableType.DataType == DataType.IDENTIFIER)
                         {
                             Address destination = GetLocation(namedVar, GetLocationUseCase.MovedTo, false);
-                            Address source = GetLocation(IRGenerator._allVariables.Values
+                            Address source = GetLocation(IRGenerator._AllVariables.Values
                                     .Where(x => x.guid.ToString() == namedVar.value).First(),
                                     GetLocationUseCase.None, false);
                             
@@ -531,16 +509,16 @@ namespace ils
                     Console.WriteLine("TODO 179");
                     break;
                 case DataType.INT:
-                    AutoMov(new RegAddress(reg.regType), new ValueAddress(var.value));
+                    AutoMov(new RegAddress(reg.Type), new ValueAddress(var.value));
                     break;
                 case DataType.CHAR:
-                    AutoMov(new RegAddress(reg.regType), new ValueAddress(var.value));
+                    AutoMov(new RegAddress(reg.Type), new ValueAddress(var.value));
                     break;
                 case DataType.BOOL:
-                    AutoMov(new RegAddress(reg.regType), new ValueAddress(var.value));
+                    AutoMov(new RegAddress(reg.Type), new ValueAddress(var.value));
                     break;
                 case DataType.IDENTIFIER:
-                    AutoMov(new RegAddress(reg.regType),GetLocation(IRGenerator._allVariables[var.value], GetLocationUseCase.None, false));
+                    AutoMov(new RegAddress(reg.Type),GetLocation(IRGenerator._AllVariables[var.value], GetLocationUseCase.None, false));
                     break;
                 case DataType.ARRAY:
                     ErrorHandler.Custom("Tego nie wolno");
@@ -578,12 +556,12 @@ namespace ils
                     // AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
                     break;
                 case DataType.IDENTIFIER:
-                    val = GetLocation(IRGenerator._allVariables.Values.Where(x => x.variableName == asign.value).First(), GetLocationUseCase.None, false);
+                    val = GetLocation(IRGenerator._AllVariables.Values.Where(x => x.variableName == asign.value).First(), GetLocationUseCase.None, false);
                     if (val is RegAddress regAddress && regAddress.Reg == RegType.rbp)
                     {
                         Register reg = GetRegister("", false);
-                        AutoMov(new RegAddress(reg.regType), val);
-                        val = new RegAddress(reg.regType);
+                        AutoMov(new RegAddress(reg.Type), val);
+                        val = new RegAddress(reg.Type);
                         FreeReg(reg);
                     }
                     /*if (_dataSection.TryGetValue(asign.value, out ReservedVariable var))
@@ -643,20 +621,20 @@ namespace ils
 
         public void FreeReg(Register reg)
         {
-            if(_regs.ContainsKey(reg.regType))
+            if(notReservedRegs.ContainsKey(reg.Type))
             {
-                Register r = _regs[reg.regType];
-                r.isAddress = false;
-                _regs[reg.regType] = r;
+                Register r = notReservedRegs[reg.Type];
+                r.IsAddress = false;
+                notReservedRegs[reg.Type] = r;
             }
-            AvailableRegs.Enqueue(reg);
-            OccupiedRegs.Remove(reg);
+            freeRegs.Enqueue(reg);
+            occupiedRegs.Remove(reg);
         }
 
         private void GenerateDestroyTemp(IRDestroyTemp dtp) 
         {
-            if (!OccupiedRegs.Forward.Contains(dtp.temp)) return;
-            Register reg = OccupiedRegs.Forward[dtp.temp];
+            if (!occupiedRegs.Forward.Contains(dtp.temp)) return;
+            Register reg = occupiedRegs.Forward[dtp.temp];
 
             FreeReg(reg);
         }
@@ -697,10 +675,10 @@ namespace ils
                 }
                 else
                 {
-                    aReg = AvailableRegs.Dequeue();
-                    AutoMov(new RegAddress(aReg.regType), compareA);
-                    compareA = new RegAddress(aReg.regType);
-                    OccupiedRegs.Add(Guid.NewGuid().ToString(), aReg);
+                    aReg = freeRegs.Dequeue();
+                    AutoMov(new RegAddress(aReg.Type), compareA);
+                    compareA = new RegAddress(aReg.Type);
+                    occupiedRegs.Add(Guid.NewGuid().ToString(), aReg);
                     FreeReg(aReg);
                 }
                             
@@ -734,10 +712,10 @@ namespace ils
                 }
                 else
                 {
-                    bReg = AvailableRegs.Dequeue();
-                    AutoMov(new RegAddress(bReg.regType), compareB);
-                    compareB = new RegAddress(bReg.regType);
-                    OccupiedRegs.Add(Guid.NewGuid().ToString(), bReg);
+                    bReg = freeRegs.Dequeue();
+                    AutoMov(new RegAddress(bReg.Type), compareB);
+                    compareB = new RegAddress(bReg.Type);
+                    occupiedRegs.Add(Guid.NewGuid().ToString(), bReg);
                     FreeReg(bReg);
                 }
             }
@@ -750,25 +728,25 @@ namespace ils
         {
             switch (jump.conditionType)
             {
-                case ASTCondition.ConditionType.EQUAL:
+                case ConditionType.EQUAL:
                     AddAsm($"je .{jump.label}");
                     break;
-                case ASTCondition.ConditionType.NOT_EQUAL:
+                case ConditionType.NOT_EQUAL:
                     AddAsm($"jne .{jump.label}");
                     break;
-                case ASTCondition.ConditionType.LESS:
+                case ConditionType.LESS:
                     AddAsm($"jl .{jump.label}");
                     break;
-                case ASTCondition.ConditionType.LESS_EQUAL:
+                case ConditionType.LESS_EQUAL:
                     AddAsm($"jle .{jump.label}");
                     break;
-                case ASTCondition.ConditionType.GREATER:
+                case ConditionType.GREATER:
                     AddAsm($"jg .{jump.label}");
                     break;
-                case ASTCondition.ConditionType.GREATER_EQUAL:
+                case ConditionType.GREATER_EQUAL:
                     AddAsm($"jge .{jump.label}");
                     break;
-                case ASTCondition.ConditionType.NONE:
+                case ConditionType.NONE:
                     AddAsm($"jmp .{jump.label}");
                     break;
             }
@@ -781,8 +759,8 @@ namespace ils
 
         private void GenerateScopeStart(IRScopeStart start)
         {
-            CurrentScope = new Scope(start.scope.id);
-            foreach (var par in currentFunc.parameters)
+            currentScope = new Scope(start.scope.id);
+            foreach (var par in currentFunc.Parameters)
             {
                 GenerateVariable(par);
             }
@@ -839,7 +817,7 @@ namespace ils
         {
             if (var is TempVariable temp)
             {
-                if (OccupiedRegs.Forward.TryGet(temp.variableName, out Register val))
+                if (occupiedRegs.Forward.TryGet(temp.variableName, out Register val))
                 {
                     /*if (useCase == GetLocationUseCase.Pointer)
                     {
@@ -854,12 +832,12 @@ namespace ils
                         return new Address() { Type = Address.AddressType.reg, reg = val.regType };
                     }*/
 
-                    return new RegAddress(val.regType);
+                    return new RegAddress(val.Type);
                 }
                 else
                 {
                     GenerateTempVariable(temp);
-                    return new RegAddress(OccupiedRegs.Forward[temp.variableName].regType);
+                    return new RegAddress(occupiedRegs.Forward[temp.variableName].Type);
                 }
             }
             else if (var is NamedVariable namedVar)
@@ -868,32 +846,32 @@ namespace ils
                 {
                     if (useCase == GetLocationUseCase.ComparedTo || useCase == GetLocationUseCase.MovedTo)
                     {
-                        return new MemoryAddress(DataSection[namedVar.variableName].Name, DataSection[namedVar.variableName].Word.LongVarSize);
+                        return new MemoryAddress(dataSection[namedVar.variableName].Name, dataSection[namedVar.variableName].Word.LongVarSize);
                     }
 
-                    return new MemoryAddress(DataSection[namedVar.variableName].Name, "");
+                    return new MemoryAddress(dataSection[namedVar.variableName].Name, "");
                 }
                 else
                 {
-                    if (!CurrentScope.stackvars.TryGetValue(namedVar.guid.ToString(), out StackVar val))
+                    if (!currentScope.StackVars.TryGetValue(namedVar.guid.ToString(), out StackVar val))
                     {
-                        CurrentScope.GenerateStackVar(namedVar);
+                        currentScope.GenerateStackVar(namedVar);
                     }
 
                     if (namedVar.isFuncArg)
                     {
                         if (useCase == GetLocationUseCase.ComparedTo || useCase == GetLocationUseCase.MovedTo)
                         {
-                            return new MemoryAddress($"rbp+{16 + CurrentScope.stackvars[namedVar.guid.ToString()].offset * 8}", "qword");
+                            return new MemoryAddress($"rbp+{16 + currentScope.StackVars[namedVar.guid.ToString()].Offset * 8}", "qword");
                         }
                         else
                         {
-                            return new MemoryAddress($"rbp+{16 + CurrentScope.stackvars[namedVar.guid.ToString()].offset * 8}", "");
+                            return new MemoryAddress($"rbp+{16 + currentScope.StackVars[namedVar.guid.ToString()].Offset * 8}", "");
                         }
                     }
                     else
                     {
-                        int offset = CurrentScope.stackvars[namedVar.guid.ToString()].offset * 8;
+                        int offset = currentScope.StackVars[namedVar.guid.ToString()].Offset * 8;
                         if (offset == 0) offset = 8;
                         if (useCase == GetLocationUseCase.ComparedTo || useCase == GetLocationUseCase.MovedTo)
                         {
@@ -935,15 +913,15 @@ namespace ils
                     return new ValueAddress(lit.value);
                 }
 
-                if (OccupiedRegs.Forward.TryGet(lit.variableName, out Register val))
+                if (occupiedRegs.Forward.TryGet(lit.variableName, out Register val))
                 {
-                    return new RegAddress(val.regType);
+                    return new RegAddress(val.Type);
                 }
                 else
                 {
                     GenerateTempVariable(lit);
 
-                    return new RegAddress(OccupiedRegs.Forward[lit.variableName].regType);
+                    return new RegAddress(occupiedRegs.Forward[lit.variableName].Type);
                 }
             }
             else if (var is FunctionReturnVariable regvar)
@@ -970,6 +948,13 @@ namespace ils
             public Word Word;
             public Variable Var;
             public string InitialValue;
+        }
+
+        public struct Register
+        {
+            public RegType Type;
+            public bool IsPreserved;
+            public bool IsAddress; //if false then it means that it contains a value, if true then an address
         }
     }
 }

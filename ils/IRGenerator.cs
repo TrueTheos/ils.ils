@@ -8,17 +8,17 @@ public class IRGenerator
     public const string MAIN_FUNCTION_LABEL = "FUNC_MAIN_START";
     public const string MAIN_FUNCTION_NAME = "main";
 
-    private static Dictionary<string, IRLabel> _labels = new();
+    private static Dictionary<string, IRLabel> _Labels = new();
 
-    private static Dictionary<string, NamedVariable> _globalVariables = new();
-    private static Dictionary<string, TempVariable> _tempVariables = new();
-    private static Dictionary<string, IRFunction> _functions = new();
+    private static Dictionary<string, NamedVariable> _GlobalVariables = new();
+    private static Dictionary<string, TempVariable> _TempVariables = new();
+    public static Dictionary<string, IRFunction> _Functions = new();
 
-    public static Map<string, string> StringLiterals = new();
+    public static Map<string, string> _StringLiterals = new();
 
-    public List<IRNode> IR = new();
+    private List<IRNode> ir = new();
 
-    public static Dictionary<string, Variable> _allVariables = new();
+    public static Dictionary<string, Variable> _AllVariables = new();
 
     private Dictionary<ASTScope, ScopeLabels> scopeLabels = new();
 
@@ -45,12 +45,12 @@ public class IRGenerator
     {
         if (currentFunction != null)
         {
-            currentFunction.nodes.Add(node);
-            IR.Add(node);
+            currentFunction.Nodes.Add(node);
+            ir.Add(node);
         }
         else
         {
-            IR.Add(node);
+            ir.Add(node);
         }
     }
 
@@ -59,21 +59,21 @@ public class IRGenerator
         ParseScope(mainScope, null, ScopeType.DEFAULT);
 
         Console.WriteLine("\n");
-        foreach (IRNode irNode in IR) Console.WriteLine(irNode.GetString());
+        foreach (IRNode irNode in ir) Console.WriteLine(irNode.GetString());
 
         /*foreach (var func in _functions.Values)
         {
             IR.Add(func);
         }*/
 
-        return IR;
+        return ir;
     }
 
     private string CreateNewTempVar(TypeSystem.Type varType, string value, string name = "")
     {
-        string varName = $"TEMP_{(name != "" ? name + "_" : "")}{_allVariables.Keys.Count}";
+        string varName = $"TEMP_{(name != "" ? name + "_" : "")}{_AllVariables.Keys.Count}";
         TempVariable tempVar = new(varName, varType, value);
-        _tempVariables.Add(varName, tempVar);
+        _TempVariables.Add(varName, tempVar);
         AddIR(tempVar);
         return varName;
     }
@@ -151,7 +151,7 @@ public class IRGenerator
             var vars = astScope.GetStatementsOfType<ASTVariableDeclaration>().ToList();
             foreach (ASTVariableDeclaration dec in vars)
             {
-                _globalVariables.Add(dec.Name.Value, null);
+                _GlobalVariables.Add(dec.Name.Value, null);
                 ParseVarialbeDeclaration(dec, astScope);
             }
 
@@ -169,12 +169,12 @@ public class IRGenerator
 
                 IRFunction irfunc = new(identifier, func.ReturnType != null ? func.ReturnType : null, parameters);
 
-                _functions.Add(func.Identifier.Value, irfunc);
+                _Functions.Add(func.Identifier.Value, irfunc);
             }
         }
 
         if (currentScope.scopeType == ScopeType.FUNCTION && parentNode is ASTFunction parenAstFunc)
-            foreach (NamedVariable parameter in _functions[parenAstFunc.Identifier.Value].parameters)
+            foreach (NamedVariable parameter in _Functions[parenAstFunc.Identifier.Value].Parameters)
                 currentScope.AddLocalVariable(parameter);
 
         IRScopeEnd irScopeEnd = new(currentScope);
@@ -182,7 +182,7 @@ public class IRGenerator
         foreach (ASTStatement statement in astScope.Statements)
             ParseStatement(statement, astScope, parentNode, irScopeEnd, scopeStart, scopeEnd);
 
-        foreach (var temp in _tempVariables) AddIR(new IRDestroyTemp(temp.Key));
+        foreach (var temp in _TempVariables) AddIR(new IRDestroyTemp(temp.Key));
 
         foreach (var local in currentScope.localVariables)
         {
@@ -191,7 +191,7 @@ public class IRGenerator
                 AddIR(new IRDestroyTemp(local.Key));
         }
 
-        _tempVariables.Clear();
+        _TempVariables.Clear();
 
         if (currentScope.id != 0)
         {
@@ -217,7 +217,7 @@ public class IRGenerator
         }
         else if (statement is ASTFunction func)
         {
-            currentFunction = _functions[func.Identifier.Value];
+            currentFunction = _Functions[func.Identifier.Value];
             AddIR(currentFunction);
             ParseScope(func.Scope, currentScope, ScopeType.FUNCTION, func);
         }
@@ -321,7 +321,7 @@ public class IRGenerator
                     break;
             }
 
-            if (currentScope.id == 0) _globalVariables[vardec.Name.Value] = (NamedVariable)newVar;
+            if (currentScope.id == 0) _GlobalVariables[vardec.Name.Value] = (NamedVariable)newVar;
 
             //_variables.Add(newVar.variableName, newVar);
             currentScope.AddLocalVariable(newVar);
@@ -354,15 +354,15 @@ public class IRGenerator
             return null;
         }
 
-        if (!_functions.ContainsKey(call.Identifier.Value) &&
+        if (!_Functions.ContainsKey(call.Identifier.Value) &&
             !Builtins.BuiltinFunctions.Any(x => x.name == call.Identifier.Value))
         {
             ErrorHandler.Custom($"Function '{call.Identifier.Value}' does not exist!");
             return null;
         }
-        else if (_functions.ContainsKey(call.Identifier.Value))
+        else if (_Functions.ContainsKey(call.Identifier.Value))
         {
-            func = _functions[call.Identifier.Value];
+            func = _Functions[call.Identifier.Value];
         }
 
         List<Variable> arguments = new();
@@ -379,7 +379,7 @@ public class IRGenerator
             if (arg is TempVariable || arg is NamedVariable)
             {
                 string temp = CreateNewTempVar(arg.variableType, "0");
-                TempVariable tempVar = _tempVariables[temp];
+                TempVariable tempVar = _TempVariables[temp];
                 tempVar.AssignVariable(arg);
                 arguments.Add(tempVar);
             }
@@ -393,21 +393,23 @@ public class IRGenerator
             }
         }
 
-        if (_functions.ContainsKey(call.Identifier.Value) &&
-            arguments.Count != _functions[call.Identifier.Value].parameters.Count)
+        if (_Functions.ContainsKey(call.Identifier.Value) &&
+            arguments.Count != _Functions[call.Identifier.Value].Parameters.Count)
         {
             ErrorHandler.Custom(
-                $"Function '{call.Identifier.Value}' takes {_functions[call.Identifier.Value].parameters.Count} arguments, you provided {arguments.Count}!");
+                $"Function '{call.Identifier.Value}' takes {_Functions[call.Identifier.Value].Parameters.Count} arguments, you provided {arguments.Count}!");
             return null;
         }
 
         //add return somehow 
 
         IRFunctionCall ircall = new(call.Identifier.Value, arguments);
-        if (func != null && func.returnType.DataType != DataType.VOID)
+        if(_Functions.ContainsKey(call.Identifier.Value)) _Functions[call.Identifier.Value].UseCount++;
+        if (func != null && func.ReturnType.DataType != DataType.VOID)
         {
-            //_IR.Add(ircall); //na razie nie pozwole na wywołanie funkcji która nie zwraca voida i nie jest przypisywana nigdzie
-            return new FunctionReturnVariable(func.name, func.returnType, currentScope.localVariables.Count, ircall);
+            AddIR(ircall);
+            if (_Functions.ContainsKey(func.Name)) _Functions[func.Name].UseCount++;
+            return new FunctionReturnVariable(func.Name, func.ReturnType, currentScope.localVariables.Count, ircall);
         }
         else
         {
@@ -453,32 +455,32 @@ public class IRGenerator
 
     private void ParseAssign(ASTAssign assign)
     {
-        Variable asnVar = currentScope.allVariables[assign.identifier.Value];
+        Variable asnVar = currentScope.allVariables[assign.Identifier.Value];
 
-        if (assign.value is ASTIdentifier identifier)
+        if (assign.Value is ASTIdentifier identifier)
         {
-            AddIR(new IRAssign(asnVar, identifier.name, Types[DataType.IDENTIFIER]));
+            AddIR(new IRAssign(asnVar, identifier.Name, Types[DataType.IDENTIFIER]));
         }
-        else if (assign.value is ASTIntLiteral intLiteral)
+        else if (assign.Value is ASTIntLiteral intLiteral)
         {
-            AddIR(new IRAssign(asnVar, intLiteral.value.ToString(), Types[DataType.INT]));
+            AddIR(new IRAssign(asnVar, intLiteral.Value.ToString(), Types[DataType.INT]));
         }
-        else if (assign.value is ASTStringLiteral strLiteral)
+        else if (assign.Value is ASTStringLiteral strLiteral)
         {
-            AddIR(new IRAssign(asnVar, strLiteral.value, Types[DataType.STRING]));
+            AddIR(new IRAssign(asnVar, strLiteral.Value, Types[DataType.STRING]));
         }
-        else if (assign.value is ASTCharLiteral charLiteral)
+        else if (assign.Value is ASTCharLiteral charLiteral)
         {
-            AddIR(new IRAssign(asnVar, charLiteral.value.ToString(), Types[DataType.CHAR]));
+            AddIR(new IRAssign(asnVar, charLiteral.Value.ToString(), Types[DataType.CHAR]));
         }
-        else if (assign.value is ASTBoolLiteral boolLiteral)
+        else if (assign.Value is ASTBoolLiteral boolLiteral)
         {
-            AddIR(new IRAssign(asnVar, boolLiteral.value.ToString(), Types[DataType.BOOL]));
+            AddIR(new IRAssign(asnVar, boolLiteral.Value.ToString(), Types[DataType.BOOL]));
         }
         else
         {
-            Variable saveLocation = currentScope.allVariables[assign.identifier.Value];
-            Variable var = ParseExpression(assign.value);
+            Variable saveLocation = currentScope.allVariables[assign.Identifier.Value];
+            Variable var = ParseExpression(assign.Value);
 
             if (var is TempVariable tempVar)
                 AddIR(new IRAssign(saveLocation, tempVar.variableName, Types[DataType.IDENTIFIER]));
@@ -501,20 +503,20 @@ public class IRGenerator
 
     private void ParseWhile(ASTWhile whilestmt)
     {
-        int labelnum = _labels.Count;
+        int labelnum = _Labels.Count;
 
         //string conditionResultName = CreateNewTempVar(DataType.BOOL, "0");
 
         IRLabel startLabel = new($"WHILE_{labelnum}_START");
         IRLabel endLabel = new($"WHILE_{labelnum}_END");
 
-        IRCompare comp = ParseCondition(whilestmt.cond /*, _tempVariables[conditionResultName]*/);
+        IRCompare comp = ParseCondition(whilestmt.Condition /*, _tempVariables[conditionResultName]*/);
 
         AddIR(startLabel);
         AddIR(comp);
-        AddIR(new IRJump(endLabel.labelName, oppositeCondition[whilestmt.cond.conditionType]));
+        AddIR(new IRJump(endLabel.labelName, oppositeCondition[whilestmt.Condition.ConditionType]));
 
-        ParseScope(whilestmt.scope, currentScope, ScopeType.LOOP);
+        ParseScope(whilestmt.Scope, currentScope, ScopeType.LOOP);
         AddIR(new IRJump(startLabel.labelName, ConditionType.NONE));
 
         AddIR(endLabel);
@@ -522,12 +524,12 @@ public class IRGenerator
 
     private IRCompare ParseCondition(ASTCondition cond)
     {
-        Variable leftNodeEvalResult = ParseExpression(cond.leftNode);
+        Variable leftNodeEvalResult = ParseExpression(cond.LeftNode);
 
         Variable rightNodeEvalResult;
 
-        if (cond.rightNode != null)
-            rightNodeEvalResult = ParseExpression(cond.rightNode);
+        if (cond.RightNode != null)
+            rightNodeEvalResult = ParseExpression(cond.RightNode);
         else
             rightNodeEvalResult = new LiteralVariable("1", Types[DataType.INT]);
 
@@ -536,21 +538,21 @@ public class IRGenerator
 
     private void ParseIf(ASTIf ifstmt)
     {
-        int labelnum = _labels.Count;
+        int labelnum = _Labels.Count;
         IRLabel label = new($"IF_{labelnum}_START");
 
-        IRCompare comp = ParseCondition(ifstmt.cond);
+        IRCompare comp = ParseCondition(ifstmt.Condition);
         AddIR(comp);
-        AddIR(new IRJump(label.labelName, oppositeCondition[ifstmt.cond.conditionType]));
+        AddIR(new IRJump(label.labelName, oppositeCondition[ifstmt.Condition.ConditionType]));
 
-        ParseScope(ifstmt.scope, currentScope, ScopeType.IF);
+        ParseScope(ifstmt.Scope, currentScope, ScopeType.IF);
 
-        if (ifstmt.pred != null)
+        if (ifstmt.Pred != null)
         {
             IRLabel endLabel = new($"IF_{labelnum}_END");
             AddIR(new IRJump(endLabel.labelName, ConditionType.NONE));
             AddIR(label);
-            ParseIfPred(ifstmt.pred, endLabel);
+            ParseIfPred(ifstmt.Pred, endLabel);
             AddIR(endLabel);
         }
         else
@@ -561,34 +563,34 @@ public class IRGenerator
     
     private void ParseIfPred(ASTIfPred pred, IRLabel endLabel)
     {
-        int labelNum = _labels.Count;
+        int labelNum = _Labels.Count;
 
         if (pred is ASTElifPred elif)
         {
             //string conditionResultName = CreateNewTempVar(DataType.BOOL, "0");
 
-            IRCompare comp = ParseCondition(elif.cond /*, _tempVariables[conditionResultName]*/);
+            IRCompare comp = ParseCondition(elif.Condition /*, _tempVariables[conditionResultName]*/);
             AddIR(comp);
 
             IRLabel label = new($"ELSE_{labelNum}_START");
-            if (elif.pred != null)
-                AddIR(new IRJump(label.labelName, oppositeCondition[elif.cond.conditionType]));
+            if (elif.Pred != null)
+                AddIR(new IRJump(label.labelName, oppositeCondition[elif.Condition.ConditionType]));
             else
-                AddIR(new IRJump(endLabel.labelName, oppositeCondition[elif.cond.conditionType]));
+                AddIR(new IRJump(endLabel.labelName, oppositeCondition[elif.Condition.ConditionType]));
 
-            ParseScope(elif.scope, currentScope, ScopeType.ELIF);
+            ParseScope(elif.Scope, currentScope, ScopeType.ELIF);
 
             AddIR(new IRJump(endLabel.labelName, ConditionType.NONE));
 
-            if (elif.pred != null)
+            if (elif.Pred != null)
             {
                 AddIR(label);
-                ParseIfPred(elif.pred, endLabel);
+                ParseIfPred(elif.Pred, endLabel);
             }
         }
         else if (pred is ASTElsePred elsepred)
         {
-            ParseScope(elsepred.scope, currentScope, ScopeType.ELSE);
+            ParseScope(elsepred.Scope, currentScope, ScopeType.ELSE);
         }
     }
 
@@ -597,11 +599,11 @@ public class IRGenerator
         if (_expression is ASTIdentifier identifier)
         {
             currentScope.VariableExistsErr(identifier.token);
-            return currentScope.allVariables[identifier.name];
+            return currentScope.allVariables[identifier.Name];
         }
         else if (_expression is ASTLiteral literal)
         {
-            return new LiteralVariable(literal.value, literal.variableType);
+            return new LiteralVariable(literal.Value, literal.VariableType);
         }
         else if (_expression is ASTFunctionCall funcCall)
         {
@@ -616,7 +618,7 @@ public class IRGenerator
             string val = "";
             List<string> vals = new();
 
-            foreach (ASTExpression item in arrayConstructor.values)
+            foreach (ASTExpression item in arrayConstructor.Values)
             {
                 Variable parsedItem = ParseExpression(item);
                 vals.Add(parsedItem.value);
@@ -624,7 +626,7 @@ public class IRGenerator
 
             val = string.Join(", ", vals);
 
-            return new ArrayVariable(arrayConstructor.type, val, arrayConstructor.length);
+            return new ArrayVariable(arrayConstructor.Type, val, arrayConstructor.Length);
         }
         else if (_expression is ASTArithmeticOperation arithmeticOp)
         {
@@ -642,7 +644,7 @@ public class IRGenerator
             }
 
             string resultName = CreateNewTempVar(Types[DataType.INT], "0", "OP_RES");
-            TempVariable result = _tempVariables[resultName];
+            TempVariable result = _TempVariables[resultName];
 
             AddIR(new IRArithmeticOp(result, leftVar, rightVar, arithmeticOp.Operation));
             if (leftVar is TempVariable) AddIR(new IRDestroyTemp(leftVar.variableName));
@@ -737,23 +739,26 @@ public class IRGenerator
 
     public class IRFunction : IRNode
     {
-        public string name;
-        public TypeSystem.Type returnType = Types[DataType.VOID];
-        public List<NamedVariable> parameters = new();
-        public List<IRNode> nodes = new();
+        public string Name;
+        public TypeSystem.Type ReturnType = Types[DataType.VOID];
+        public List<NamedVariable> Parameters = new();
+        public List<IRNode> Nodes = new();
+        public int UseCount;
+
+        public bool WasUsed => UseCount > 0;
 
         public IRFunction(string name, TypeSystem.Type returnType, List<NamedVariable> parameters)
         {
-            Name = "FUNC";
-            this.name = name;
-            if (returnType != null) this.returnType = returnType;
-            this.parameters = parameters;
+            base.Name = "FUNC";
+            this.Name = name;
+            if (returnType != null) ReturnType = returnType;
+            Parameters = parameters;
         }
 
         public override string GetString()
         {
-            string r = $"({Name}, {name}, {returnType}";
-            foreach (NamedVariable parameter in parameters) r += $", {parameter.variableName}";
+            string r = $"({base.Name}, {Name}, {ReturnType}";
+            foreach (NamedVariable parameter in Parameters) r += $", {parameter.variableName}";
 
             r += ")";
             return r;
@@ -876,7 +881,7 @@ public class IRGenerator
             if (val is TempVariable) SetValue(val.GetValueAsString(), Types[DataType.IDENTIFIER]);
             if (val is NamedVariable) SetValue(val.GetValueAsString(), Types[DataType.IDENTIFIER]);
             if (val is LiteralVariable literalVar) SetValue(val.GetValueAsString(), literalVar.variableType);
-            if (val is FunctionReturnVariable) SetValue(val.GetValueAsString(), val.variableType);
+            if (val is FunctionReturnVariable) SetValue("rax", val.variableType);
             if (val is ArrayVariable arrayVar) SetValue(val.GetValueAsString(), arrayVar.variableType);
         }
 
@@ -902,7 +907,7 @@ public class IRGenerator
             this.call = call;
             //SetValue(reg, variableType);
 
-            _allVariables[guid.ToString()] = this;
+            _AllVariables[guid.ToString()] = this;
         }
 
         public override string GetString()
@@ -981,7 +986,7 @@ public class IRGenerator
                 }
             }
 
-            _allVariables.Add(guid.ToString(), this);
+            _AllVariables.Add(guid.ToString(), this);
         }
 
         public override string GetString()
@@ -1004,7 +1009,7 @@ public class IRGenerator
             variableType = varType;
             SetValue(value, variableType);
 
-            _allVariables.Add(guid.ToString(), this);
+            _AllVariables.Add(guid.ToString(), this);
         }
 
         public override string GetString()
@@ -1029,10 +1034,10 @@ public class IRGenerator
 
             if (type.DataType == DataType.STRING)
             {
-                if (!StringLiterals.Reverse.Contains(value))
+                if (!_StringLiterals.Reverse.Contains(value))
                 {
-                    string name = "STR_" + StringLiterals.Forward.Count.ToString();
-                    StringLiterals.Add(name, value);
+                    string name = "STR_" + _StringLiterals.Forward.Count.ToString();
+                    _StringLiterals.Add(name, value);
                     SetValue(name, variableType);
                 }
                 else
@@ -1046,7 +1051,7 @@ public class IRGenerator
                 SetValue(value, variableType);
             }
 
-            _allVariables.Add(guid.ToString(), this);
+            _AllVariables.Add(guid.ToString(), this);
         }
 
         public override string GetString()
@@ -1070,7 +1075,7 @@ public class IRGenerator
             variableType = varType;
             SetValue(value, variableType);
 
-            _allVariables.Add(guid.ToString(), this);
+            _AllVariables.Add(guid.ToString(), this);
             Length = arrayLength;
         }
 
@@ -1124,9 +1129,9 @@ public class IRGenerator
 
             labelName = name;
 
-            if (_labels.ContainsKey(labelName)) ErrorHandler.Custom($"Label {labelName} already exists!");
+            if (_Labels.ContainsKey(labelName)) ErrorHandler.Custom($"Label {labelName} already exists!");
 
-            _labels.Add(labelName, this);
+            _Labels.Add(labelName, this);
         }
 
         public override string GetString()
@@ -1241,7 +1246,7 @@ public class IRGenerator
         public bool VariableExists(string name)
         {
             return (allVariables.ContainsKey(name) && allVariables[name] != null) ||
-                   (_globalVariables.ContainsKey(name) && _globalVariables[name] != null);
+                   (_GlobalVariables.ContainsKey(name) && _GlobalVariables[name] != null);
         }
 
         public void VariableExistsErr(Token name)

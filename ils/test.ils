@@ -1,20 +1,24 @@
 integer: int = 1+2*(6+0);
 array: [int] = {1+1,2,3,4,5};
 
+fun sum(a:int, b:int) -> int
+{
+	return a + b;
+}
+
 fun test()
 {
-	//@println(array[1]);
+	@println("Test");
 }
 
 fun main() -> int
 {
-	//x:int = integer;
-	x: int = 1;
+	test();
+	x: int = sum(1, sum(3,2));
 	@println(x);
 	x = integer;
 	@println(x);
 	x = array[2];
 	@println(x);
-	//@println(integer + integer * 2 + array[1]);
 	return 0;
 }

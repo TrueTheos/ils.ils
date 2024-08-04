@@ -75,54 +75,54 @@ namespace ils
 
     public record ASTAssign(Token identifier, ASTExpression value) : ASTStatement
     {
-        public Token identifier = identifier;
-        public ASTExpression value = value;
+        public Token Identifier = identifier;
+        public ASTExpression Value = value;
     }
 
     public record ASTIdentifier(Token token) : ASTExpression
     {
-        public string name = token.Value;
+        public string Name = token.Value;
     }
 
     public abstract record ASTLiteral : ASTExpression
     {
-        public string value;
-        public Type variableType;
+        public string Value;
+        public Type VariableType;
     }
 
     public record ASTIntLiteral : ASTLiteral
     {
-        public ASTIntLiteral(string value) { this.value = value; this.variableType = TypeSystem.Types[DataType.INT]; }
+        public ASTIntLiteral(string value) { Value = value; VariableType = TypeSystem.Types[DataType.INT]; }
     }
 
     public record ASTStringLiteral : ASTLiteral
     {
-        public ASTStringLiteral(string value) { this.value = value; this.variableType = TypeSystem.Types[DataType.STRING]; ; }
+        public ASTStringLiteral(string value) { Value = value; VariableType = TypeSystem.Types[DataType.STRING]; ; }
     }
 
     public record ASTCharLiteral : ASTLiteral
     {
-        public ASTCharLiteral(string value) { this.value = ((int)value[0]).ToString(); this.variableType = TypeSystem.Types[DataType.CHAR]; ; }
+        public ASTCharLiteral(string value) { Value = ((int)value[0]).ToString(); VariableType = TypeSystem.Types[DataType.CHAR]; ; }
     }
 
     public record ASTBoolLiteral : ASTLiteral
     {
-        public ASTBoolLiteral(string value) { this.value = value == "true" ? "1" : "0"; this.variableType = TypeSystem.Types[DataType.BOOL]; ; }
+        public ASTBoolLiteral(string value) { Value = value == "true" ? "1" : "0"; VariableType = TypeSystem.Types[DataType.BOOL]; ; }
     }
 
     public record ASTArrayConstructor : ASTExpression
     {
-        public List<ASTExpression> values;
-        public TypeSystem.Type type;
-        public int length;
-        public ASTArrayConstructor(List<ASTExpression> vals, TypeSystem.Type type, int length) { this.values = vals; this.type = type; this.length = length; }
+        public List<ASTExpression> Values;
+        public TypeSystem.Type Type;
+        public int Length;
+        public ASTArrayConstructor(List<ASTExpression> vals, TypeSystem.Type type, int length) { Values = vals; Type = type; Length = length; }
     }
 
     public record ASTArrayIndex : ASTExpression
     {
         public ASTExpression Index;
         public Token Identifier;
-        public ASTArrayIndex(ASTExpression index, Token identifier) { this.Index = index; this.Identifier = identifier; }
+        public ASTArrayIndex(ASTExpression index, Token identifier) { Index = index; Identifier = identifier; }
     }
 
 
@@ -150,70 +150,68 @@ namespace ils
 
     public record ASTBreak : ASTStatement
     {
-        public ASTScope scope;
-        public ASTBreak(ASTScope scope) { this.scope = scope; }
+        public ASTScope Scope;
+        public ASTBreak(ASTScope scope) { Scope = scope; }
     }
 
     public record ASTWhile(ASTCondition cond, ASTScope scope) : ASTStatement
     {
-        public ASTCondition cond = cond;
-        public ASTScope scope = scope;
+        public ASTCondition Condition = cond;
+        public ASTScope Scope = scope;
     }
 
     public record ASTIf(ASTCondition cond, ASTScope scope, ASTIfPred pred) : ASTStatement
     {
-        public ASTCondition cond = cond;
-        public ASTScope scope = scope;
-        public ASTIfPred pred = pred;
+        public ASTCondition Condition = cond;
+        public ASTScope Scope = scope;
+        public ASTIfPred Pred = pred;
     }
 
     public abstract record ASTIfPred : ASTStatement { }
 
     public record ASTElifPred(ASTCondition cond, ASTScope scope, ASTIfPred pred) : ASTIfPred
     {
-        public ASTCondition cond = cond;
-        public ASTScope scope = scope;
-        public ASTIfPred pred = pred;
+        public ASTCondition Condition = cond;
+        public ASTScope Scope = scope;
+        public ASTIfPred Pred = pred;
     }
 
     public record ASTElsePred(ASTScope scope) : ASTIfPred
     {
-        public ASTScope scope = scope;
+        public ASTScope Scope = scope;
     }
 
     public record ASTCondition : ASTStatement
     {
-        public ASTExpression leftNode;
-        public enum ConditionType { EQUAL, NOT_EQUAL, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, NONE }
-        public ConditionType conditionType;
-
-        public ASTExpression rightNode;
+        public ASTExpression LeftNode;
+        public ConditionType ConditionType;
+        public ASTExpression RightNode;
 
         public ASTCondition(ASTExpression leftNode, Token conditionSymbol, ASTExpression rightNode)
         {
-            this.leftNode = leftNode;
+            LeftNode = leftNode;
 
             switch(conditionSymbol?.TokenType)
             {
-                case TokenType.EQUALS: this.conditionType = ConditionType.EQUAL; break;
-                case TokenType.NOT_EQUAL: this.conditionType = ConditionType.NOT_EQUAL; break;
-                case TokenType.LESS: this.conditionType = ConditionType.LESS; break;
-                case TokenType.GREATER: this.conditionType = ConditionType.GREATER; break;
-                case TokenType.LESS_EQUAL: this.conditionType = ConditionType.LESS_EQUAL; break;
-                case TokenType.GREATER_EQUAL: this.conditionType = ConditionType.GREATER_EQUAL; break;
+                case TokenType.EQUALS: ConditionType = ConditionType.EQUAL; break;
+                case TokenType.NOT_EQUAL: ConditionType = ConditionType.NOT_EQUAL; break;
+                case TokenType.LESS: ConditionType = ConditionType.LESS; break;
+                case TokenType.GREATER: ConditionType = ConditionType.GREATER; break;
+                case TokenType.LESS_EQUAL: ConditionType = ConditionType.LESS_EQUAL; break;
+                case TokenType.GREATER_EQUAL: ConditionType = ConditionType.GREATER_EQUAL; break;
             }
 
-            this.rightNode = rightNode;
+            RightNode = rightNode;
         }
     }
 
     public record ASTArrayDeclaration : ASTExpression
     {
-        public List<ASTExpression> initialValues;
+        public List<ASTExpression> InitialValues;
 
         public ASTArrayDeclaration(List<ASTExpression> initialValues)
         {
-            this.initialValues = initialValues;
+            this.InitialValues = initialValues;
         }
     }
 }

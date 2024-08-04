@@ -42,9 +42,21 @@ namespace ils
 
         private ASTExpression ParseExpressionNode()
         {
-            if (TryConsume(TokenType.LITERAL_INT) is Token intLiteral && intLiteral != null)
+            if (TryConsume(TokenType.LITERAL_INT) is Token intLiteral)
             {
                 return new ASTIntLiteral(intLiteral.Value);
+            }
+            if (TryConsume(TokenType.LITERAL_CHAR) is Token charLiteral)
+            {
+                return new ASTCharLiteral(charLiteral.Value);
+            }
+            if (TryConsume(TokenType.LITERAL_STR) is Token strLiteral)
+            {
+                return new ASTStringLiteral(strLiteral.Value);
+            }
+            if (TryConsume(TokenType.TYPE_BOOLEAN) is Token boolLiteral)
+            {
+                return new ASTBoolLiteral(boolLiteral.Value);
             }
             if (Expect(TokenType.IDENTIFIER))
             {
@@ -81,22 +93,22 @@ namespace ils
             }
             if (TryConsume(TokenType.QUOTATION) != null)
             {
-                if (TryConsume(TokenType.LITERAL_STR) is Token strLiteral && strLiteral != null)
+                if (TryConsume(TokenType.LITERAL_STR) is Token strLit)
                 {
                     if (TryConsume(TokenType.QUOTATION) != null)
                     {
-                        return new ASTStringLiteral(strLiteral.Value);
+                        return new ASTStringLiteral(strLit.Value);
                     }
                 }
 
             }
             if (TryConsume(TokenType.SINGLE_QUATATION) != null)
             {
-                if (TryConsume(TokenType.LITERAL_CHAR) is Token charLiteral && charLiteral != null)
+                if (TryConsume(TokenType.LITERAL_CHAR) is Token charLit)
                 {
                     if (TryConsume(TokenType.SINGLE_QUATATION) != null)
                     {
-                        return new ASTCharLiteral(charLiteral.Value);
+                        return new ASTCharLiteral(charLit.Value);
                     }
                 }
 
@@ -453,9 +465,9 @@ namespace ils
 
             if(variableType is ArrayType arrayType && value is ASTArrayDeclaration arrayDeclaration)
             {
-                if (arrayType.length == -1 && arrayDeclaration.initialValues != null)
+                if (arrayType.length == -1 && arrayDeclaration.InitialValues != null)
                 {
-                    arrayType.length = arrayDeclaration.initialValues.Count;
+                    arrayType.length = arrayDeclaration.InitialValues.Count;
                 }
             }
 
@@ -473,6 +485,7 @@ namespace ils
             }
             Consume();
 
+            Token peek = Peek();
             List<ASTExpression> arguments = new();
 
             ASTExpression expr = ParseExpression();
