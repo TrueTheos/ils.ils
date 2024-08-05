@@ -61,13 +61,15 @@ namespace ils
         private Queue<Register> freeRegs = new();
         private Map<string, Register> occupiedRegs = new();
 
-        private List<string> asm = new();
+        //private List<string> asm = new();
 
         private Dictionary<string, ReservedVariable> dataSection = new();
 
         private Scope currentScope;
 
         private IRFunction currentFunc;
+
+        private StreamWriter streamWriter;
 
         public class Scope
         {
@@ -300,8 +302,9 @@ namespace ils
             AddAsm("pop rbp");
         }
 
-        public string GenerateASM(List<IRNode> ir)
+        public void GenerateASM(List<IRNode> ir, StreamWriter writer)
         {
+            streamWriter = writer;
             foreach (var reg in notReservedRegs.Values)
             {
                 freeRegs.Enqueue(reg);
@@ -346,25 +349,26 @@ namespace ils
             foreach (LibcFunction libcFunc in BuiltinFunctions.Where(x => x is LibcFunction libc && !string.IsNullOrEmpty(libc.libcName)))
             {
                 AddAsm($"extern {libcFunc.libcName}");
-            }    
+            }
 
             //Console.WriteLine('\n' + string.Join("", asm));
 
-            return string.Join("", asm);
+            streamWriter.Close();
         }
 
         public void AddAsm(string code, int tabsCount = 1)
         {
             string tabs = new string('\t', tabsCount);
-            asm.Add(tabs + code + '\n');
+            //asm.Add(tabs + code + '\n');
+            streamWriter.WriteLine(tabs + code + '\n');
             //Console.WriteLine(tabs + code + '\n');
         }
 
-        public void ReplaceLastAsm(string code, int tabsCount = 1)
+        /*public void ReplaceLastAsm(string code, int tabsCount = 1)
         {
             string tabs = new string('\t', tabsCount);
             asm[asm.Count - 1] = tabs + code + '\n';
-        }
+        }*/
 
         private bool VarExists(string name)
         {

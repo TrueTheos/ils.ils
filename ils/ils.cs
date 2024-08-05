@@ -49,12 +49,9 @@ class ILS
             var optimizedIR = irGraph.OptimizeIR(ir);
 
             asmGen = new();
-            string asm = asmGen.GenerateASM(optimizedIR);
 
-            using (StreamWriter writer = new StreamWriter(OUTPUT_FILE))
-            {
-                writer.Write(asm);
-            }
+            StreamWriter streamWriter = new(OUTPUT_FILE);
+            asmGen.GenerateASM(optimizedIR, streamWriter);
 
             watch.Stop();
             var elapsedMs = watch.ElapsedMilliseconds;

@@ -271,10 +271,6 @@ public class IRGenerator
         currentScope.VariableExistsErr(ast.Identifier);
 
         Variable array = currentScope.GetVariable(ast.Identifier);
-        if (index is LiteralVariable lit)
-        {
-            
-        }
 
         return new ArrayIndexedVariable(index, array);
     }
