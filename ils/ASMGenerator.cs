@@ -360,7 +360,7 @@ namespace ils
         {
             string tabs = new string('\t', tabsCount);
             //asm.Add(tabs + code + '\n');
-            streamWriter.WriteLine(tabs + code + '\n');
+            streamWriter.WriteLine(tabs + code);
             //Console.WriteLine(tabs + code + '\n');
         }
 
