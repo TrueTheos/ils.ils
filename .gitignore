@@ -11,6 +11,18 @@ build/
 
 old/
 
+ils/.idea
+ils/bin
+ils/.vs
+ils/obj
+
+out
+out.asm
+out.o
+test.ils
+
+ils-lang/
+
 # Local History for Visual Studio Code
 .history/
 
