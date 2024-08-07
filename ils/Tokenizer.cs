@@ -53,9 +53,9 @@ namespace ils
             startIndex = endIndex;
         }
 
-        public List<Token> Tokenize(string source)
+        public List<Token> Tokenize(string src)
         {
-            this.source = source;
+            source = src;
             tokens.Clear();
             index = 0;
             lineCount = 1;
@@ -63,7 +63,7 @@ namespace ils
             while (CanPeek())
             {
                 char c = Peek();
-                if (IsValidStartChar(c))
+                if (IsValidStartChar(c) && (!char.IsSymbol(Peek(1)) || Peek(1) == '_'))
                 {
                     TokenizeIdentifierOrKeyword();
                 }
@@ -148,6 +148,26 @@ namespace ils
                     else
                     {
                         AddTokenAndAdvance(TokenType.SLASH);
+                    }
+                    break;
+                case '&':
+                    if (Peek(1) == '&')
+                    {
+                        AddTokenAndAdvance(TokenType.AND);
+                    }
+                    else
+                    {
+                        AddTokenAndAdvance(TokenType.BITWISE_AND);
+                    }
+                    break;
+                case '|':
+                    if (Peek(1) == '|')
+                    {
+                        AddTokenAndAdvance(TokenType.OR);
+                    }
+                    else
+                    {
+                        AddTokenAndAdvance(TokenType.BITWISE_OR);
                     }
                     break;
                 case '%': AddTokenAndAdvance(TokenType.PERCENT); break;

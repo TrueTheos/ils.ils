@@ -47,6 +47,14 @@ namespace ils
         NOT_EQUAL, // !=
         NOT, // !
 
+        AND, // &&
+        OR, // ||
+
+        BITWISE_OR, // |
+        BITWISE_AND, // &
+        BITWISE_XOR, // ^
+        BITWISE_NOT, // !
+
         FUNCTION,
         RETURN, //return
         RETURN_TYPE, //->
