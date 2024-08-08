@@ -154,24 +154,24 @@ namespace ils
         public ASTBreak(ASTScope scope) { Scope = scope; }
     }
 
-    public record ASTWhile(ASTCondition cond, ASTScope scope) : ASTStatement
+    public record ASTWhile(ASTLogicCondition cond, ASTScope scope) : ASTStatement
     {
-        public ASTCondition Condition = cond;
+        public ASTLogicCondition Condition = cond;
         public ASTScope Scope = scope;
     }
 
-    public record ASTIf(ASTCondition cond, ASTScope scope, ASTIfPred pred) : ASTStatement
+    public record ASTIf(ASTLogicCondition cond, ASTScope scope, ASTIfPred pred) : ASTStatement
     {
-        public ASTCondition Condition = cond;
+        public ASTLogicCondition Condition = cond;
         public ASTScope Scope = scope;
         public ASTIfPred Pred = pred;
     }
 
     public abstract record ASTIfPred : ASTStatement { }
 
-    public record ASTElifPred(ASTCondition cond, ASTScope scope, ASTIfPred pred) : ASTIfPred
+    public record ASTElifPred(ASTLogicCondition cond, ASTScope scope, ASTIfPred pred) : ASTIfPred
     {
-        public ASTCondition Condition = cond;
+        public ASTLogicCondition Condition = cond;
         public ASTScope Scope = scope;
         public ASTIfPred Pred = pred;
     }
@@ -200,6 +200,22 @@ namespace ils
                 case TokenType.LESS_EQUAL: ConditionType = ConditionType.LESS_EQUAL; break;
                 case TokenType.GREATER_EQUAL: ConditionType = ConditionType.GREATER_EQUAL; break;
             }
+
+            RightNode = rightNode;
+        }
+    }
+
+    public record ASTLogicCondition : ASTStatement
+    {
+        public ASTStatement LeftNode;
+        public TokenType LogicContitionType;
+        public ASTStatement RightNode;
+
+        public ASTLogicCondition(ASTStatement leftNode, TokenType logicContitionType, ASTStatement rightNode)
+        {
+            LeftNode = leftNode;
+
+            LogicContitionType = logicContitionType;
 
             RightNode = rightNode;
         }

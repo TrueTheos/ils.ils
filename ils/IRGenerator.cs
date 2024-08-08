@@ -59,7 +59,11 @@ public class IRGenerator
         ParseScope(mainScope, null, ScopeType.DEFAULT);
 
         Console.WriteLine("\n");
-        foreach (IRNode irNode in ir) Console.WriteLine(irNode.GetString());
+        foreach (IRNode irNode in ir)
+        {
+            if (irNode == null) continue;
+            Console.WriteLine(irNode.GetString());
+        }
 
         /*foreach (var func in _functions.Values)
         {
@@ -505,17 +509,78 @@ public class IRGenerator
 
         IRLabel startLabel = new($"WHILE_{labelnum}_START");
         IRLabel endLabel = new($"WHILE_{labelnum}_END");
+        IRLabel condLabel = new($"WHILE_{labelnum}_COND");
 
-        IRCompare comp = ParseCondition(whilestmt.Condition /*, _tempVariables[conditionResultName]*/);
-
+        //IRCompare comp = ParseCondition(whilestmt.Condition /*, _tempVariables[conditionResultName]*/);
+        
+        AddIR(new IRJump(condLabel.labelName, ConditionType.NONE));
         AddIR(startLabel);
-        AddIR(comp);
-        AddIR(new IRJump(endLabel.labelName, oppositeCondition[whilestmt.Condition.ConditionType]));
-
         ParseScope(whilestmt.Scope, currentScope, ScopeType.LOOP);
-        AddIR(new IRJump(startLabel.labelName, ConditionType.NONE));
-
+        AddIR(condLabel);
+        //AddIR(comp);
+        ParseLogicalCondition(whilestmt.Condition, startLabel, endLabel);
+        //AddIR(new IRJump(startLabel.labelName, whilestmt.Condition.ConditionType));
         AddIR(endLabel);
+    }
+
+    private void ParseLogicalCondition(ASTLogicCondition _cond, IRLabel trueLabel, IRLabel falseLabel)
+    {
+        IRCompare leftCompare = null;
+        ConditionType leftConditionType = ConditionType.NONE;
+
+        IRCompare rightCompare = null;
+        ConditionType rightConditionType = ConditionType.NONE;
+
+        if (_cond.LeftNode != null)
+        {
+            if(_cond.LeftNode is ASTLogicCondition leftCond)
+            {
+                ParseLogicalCondition(leftCond, trueLabel, falseLabel);
+            }
+            if(_cond.LeftNode is ASTCondition cond)
+            {
+                leftCompare = ParseCondition(cond);
+                leftConditionType = cond.ConditionType;
+            }
+        }
+
+        if (_cond.RightNode != null)
+        {
+            if (_cond.RightNode is ASTLogicCondition rightCond)
+            {
+                ParseLogicalCondition(rightCond, trueLabel, falseLabel);
+            }
+            if (_cond.RightNode is ASTCondition cond)
+            {
+                rightCompare = ParseCondition(cond);
+                rightConditionType = cond.ConditionType;
+            }
+        }
+
+        AddIR(leftCompare);
+        if(_cond.LogicContitionType == TokenType.AND)
+        {
+            AddIR(new IRJump(falseLabel.labelName, oppositeCondition[leftConditionType]));
+
+            if (rightCompare != null)
+            {
+                AddIR(rightCompare);
+                AddIR(new IRJump(falseLabel.labelName, oppositeCondition[rightConditionType]));
+            }
+        }
+        else if(_cond.LogicContitionType == TokenType.OR)
+        {
+            AddIR(new IRJump(trueLabel.labelName, leftConditionType));
+
+            AddIR(rightCompare);
+            if(trueLabel != null) AddIR(new IRJump(falseLabel.labelName, oppositeCondition[rightConditionType]));
+        }
+        else
+        {
+            AddIR(rightCompare);
+            AddIR(new IRJump(falseLabel.labelName, oppositeCondition[rightConditionType]));
+        }
+        
     }
 
     private IRCompare ParseCondition(ASTCondition cond)
@@ -536,16 +601,19 @@ public class IRGenerator
     {
         int labelnum = _Labels.Count;
         IRLabel label = new($"IF_{labelnum}_START");
+        IRLabel bodyLabel = new($"IF_{labelnum}_BODY");
+        IRLabel endLabel = new($"IF_{labelnum}_END");
 
-        IRCompare comp = ParseCondition(ifstmt.Condition);
-        AddIR(comp);
-        AddIR(new IRJump(label.labelName, oppositeCondition[ifstmt.Condition.ConditionType]));
+        //IRCompare comp = ParseCondition(ifstmt.Condition);
+        //AddIR(comp);
+        ParseLogicalCondition(ifstmt.Condition, bodyLabel, endLabel);
+        //AddIR(new IRJump(label.labelName, oppositeCondition[ifstmt.Condition.ConditionType]));
 
+        AddIR(bodyLabel);
         ParseScope(ifstmt.Scope, currentScope, ScopeType.IF);
 
         if (ifstmt.Pred != null)
-        {
-            IRLabel endLabel = new($"IF_{labelnum}_END");
+        {    
             AddIR(new IRJump(endLabel.labelName, ConditionType.NONE));
             AddIR(label);
             ParseIfPred(ifstmt.Pred, endLabel);
@@ -554,6 +622,7 @@ public class IRGenerator
         else
         {
             AddIR(label);
+            AddIR(endLabel);
         }
     }
     
@@ -565,14 +634,18 @@ public class IRGenerator
         {
             //string conditionResultName = CreateNewTempVar(DataType.BOOL, "0");
 
-            IRCompare comp = ParseCondition(elif.Condition /*, _tempVariables[conditionResultName]*/);
-            AddIR(comp);
+            //IRCompare comp = ParseCondition(elif.Condition /*, _tempVariables[conditionResultName]*/);
+            //AddIR(comp);
+            
+
 
             IRLabel label = new($"ELSE_{labelNum}_START");
             if (elif.Pred != null)
-                AddIR(new IRJump(label.labelName, oppositeCondition[elif.Condition.ConditionType]));
+                ParseLogicalCondition(elif.Condition, null, label);
+                //AddIR(new IRJump(label.labelName, oppositeCondition[elif.Condition.ConditionType]));
             else
-                AddIR(new IRJump(endLabel.labelName, oppositeCondition[elif.Condition.ConditionType]));
+                ParseLogicalCondition(elif.Condition, null, endLabel);
+                //AddIR(new IRJump(endLabel.labelName, oppositeCondition[elif.Condition.ConditionType]));
 
             ParseScope(elif.Scope, currentScope, ScopeType.ELIF);
 

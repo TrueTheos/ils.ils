@@ -154,6 +154,7 @@ namespace ils
                     if (Peek(1) == '&')
                     {
                         AddTokenAndAdvance(TokenType.AND);
+                        Consume();
                     }
                     else
                     {
@@ -164,6 +165,7 @@ namespace ils
                     if (Peek(1) == '|')
                     {
                         AddTokenAndAdvance(TokenType.OR);
+                        Consume();
                     }
                     else
                     {

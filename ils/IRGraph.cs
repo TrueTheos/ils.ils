@@ -150,6 +150,7 @@ namespace ils
                 DotNode lastNode = myNode;
                 foreach (var inst in node.instructions)
                 {
+                    if (inst == null) continue;
                     var nod = new DotNode()
                     .WithIdentifier(inst.GetHashCode().ToString())
                     .WithShape(DotNodeShape.Ellipse)

@@ -3,14 +3,15 @@
     Block comment
 */
 
-defer - do this at the end of the scope
-
 @builtIn
 
 i++;
 i--;
 
 && || 
+
+!= > < <= >= ==
+& | ^ ! << >> >>>
 
 number: int = 10;
 letter: char = 'c';

@@ -218,8 +218,6 @@ namespace ils
 
         private ASTCondition ParseCondition()
         {
-            TryConsumeErr(TokenType.OPEN_PARENTHESIS);
-
             ASTExpression leftNode = ParseExpression();
 
             if (leftNode == null)
@@ -243,15 +241,52 @@ namespace ils
                     return null;
                 }
 
-                TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
+                //TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
 
                 return new ASTCondition(leftNode, conditionType, rightNode);
             }
             else
             {
-                TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
+                //TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
 
                 return new ASTCondition(leftNode, null, null);
+            }
+        }
+
+        private ASTLogicCondition ParseLogicCondition()
+        {
+            TryConsumeErr(TokenType.OPEN_PARENTHESIS);
+            ASTCondition leftNode = ParseCondition();
+            
+            if(leftNode == null)
+            {
+                ErrorHandler.Throw(new ExpectedError("condition", Peek().TokenType.ToString(), Peek().Line));
+                return null;
+            }
+
+            Token conditionType = Peek();
+            TokenType type = conditionType.TokenType;
+
+            if(type == TokenType.AND || type == TokenType.OR)
+            {
+                Consume();
+
+                ASTCondition rightNode = ParseCondition();
+
+                if (rightNode == null)
+                {
+                    ErrorHandler.Throw(new ExpectedError("condition", Peek().TokenType.ToString(), Peek().Line));
+                    return null;
+                }
+
+                TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
+
+                return new ASTLogicCondition(leftNode, conditionType.TokenType, rightNode);
+            }
+            else
+            {
+                TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
+                return new ASTLogicCondition(leftNode, TokenType.OR, null);
             }
         }
 
@@ -259,7 +294,7 @@ namespace ils
         {
             if (TryConsume(TokenType.ELIF) != null)
             {
-                ASTCondition cond = ParseCondition();
+                ASTLogicCondition cond = ParseLogicCondition();
 
                 if (cond == null)
                 {
@@ -580,7 +615,7 @@ namespace ils
 
             if (TryConsume(TokenType.IF) != null)
             {
-                ASTCondition cond = ParseCondition();
+                ASTLogicCondition cond = ParseLogicCondition();
 
                 if (cond == null)
                 {
@@ -617,7 +652,7 @@ namespace ils
 
             if (TryConsume(TokenType.WHILE) != null)
             {
-                ASTCondition cond = ParseCondition();
+                ASTLogicCondition cond = ParseLogicCondition();
 
                 if (cond == null)
                 {
