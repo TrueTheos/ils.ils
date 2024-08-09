@@ -207,17 +207,22 @@ namespace ils
 
     public record ASTLogicCondition : ASTStatement
     {
-        public ASTStatement LeftNode;
-        public TokenType LogicContitionType;
-        public ASTStatement RightNode;
+        public List<ASTCondition> Conditions { get; }
+        public List<TokenType> LogicOperators { get; }
 
-        public ASTLogicCondition(ASTStatement leftNode, TokenType logicContitionType, ASTStatement rightNode)
+        public ASTLogicCondition()
         {
-            LeftNode = leftNode;
+            Conditions = new List<ASTCondition>();
+            LogicOperators = new List<TokenType>();
+        }
 
-            LogicContitionType = logicContitionType;
-
-            RightNode = rightNode;
+        public void AddCondition(ASTCondition condition, TokenType logicOperator = TokenType.OR)
+        {
+            Conditions.Add(condition);
+            if (Conditions.Count > 1)
+            {
+                LogicOperators.Add(logicOperator);
+            }
         }
     }
 

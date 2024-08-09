@@ -256,38 +256,39 @@ namespace ils
         private ASTLogicCondition ParseLogicCondition()
         {
             TryConsumeErr(TokenType.OPEN_PARENTHESIS);
-            ASTCondition leftNode = ParseCondition();
-            
-            if(leftNode == null)
+            ASTLogicCondition logicCondition = new ASTLogicCondition();
+
+            while (true)
             {
-                ErrorHandler.Throw(new ExpectedError("condition", Peek().TokenType.ToString(), Peek().Line));
-                return null;
-            }
+                ASTCondition condition = ParseCondition();
 
-            Token conditionType = Peek();
-            TokenType type = conditionType.TokenType;
-
-            if(type == TokenType.AND || type == TokenType.OR)
-            {
-                Consume();
-
-                ASTCondition rightNode = ParseCondition();
-
-                if (rightNode == null)
+                if (condition == null)
                 {
                     ErrorHandler.Throw(new ExpectedError("condition", Peek().TokenType.ToString(), Peek().Line));
                     return null;
                 }
 
-                TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
+                logicCondition.AddCondition(condition);
 
-                return new ASTLogicCondition(leftNode, conditionType.TokenType, rightNode);
+                Token nextToken = Peek();
+                if (nextToken.TokenType == TokenType.AND || nextToken.TokenType == TokenType.OR)
+                {
+                    Consume(); // Consume the logical operator
+                    logicCondition.AddCondition(null, nextToken.TokenType); // Add null as a placeholder, it will be replaced in the next iteration
+                }
+                else if (nextToken.TokenType == TokenType.CLOSE_PARENTHESIS)
+                {
+                    break;
+                }
+                else
+                {
+                    ErrorHandler.Throw(new ExpectedError("AND, OR, or )", nextToken.TokenType.ToString(), nextToken.Line));
+                    return null;
+                }
             }
-            else
-            {
-                TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
-                return new ASTLogicCondition(leftNode, TokenType.OR, null);
-            }
+
+            TryConsumeErr(TokenType.CLOSE_PARENTHESIS);
+            return logicCondition;
         }
 
         private ASTIfPred ParseIfPred()

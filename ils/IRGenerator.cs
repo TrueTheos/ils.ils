@@ -525,75 +525,72 @@ public class IRGenerator
 
     private void ParseLogicalCondition(ASTLogicCondition _cond, IRLabel trueLabel, IRLabel falseLabel)
     {
-        IRCompare leftCompare = null;
-        ConditionType leftConditionType = ConditionType.NONE;
-
-        IRCompare rightCompare = null;
-        ConditionType rightConditionType = ConditionType.NONE;
-
-        if (_cond.LeftNode != null)
+        if (_cond.Conditions.Count == 0)
         {
-            if(_cond.LeftNode is ASTLogicCondition leftCond)
+            // Handle empty condition (shouldn't happen in practice)
+            return;
+        }
+
+        for (int i = 0; i < _cond.Conditions.Count; i++)
+        {
+            if (_cond.Conditions[i] != null)
             {
-                ParseLogicalCondition(leftCond, trueLabel, falseLabel);
+                IRCompare compare = ParseCondition(_cond.Conditions[i]);
+                AddIR(compare);
+
+                if (i < _cond.LogicOperators.Count)
+                {
+                    if (_cond.LogicOperators[i] == TokenType.OR)
+                    {
+                        // For OR, jump to true label if condition is true
+                        AddIR(new IRJump(trueLabel.labelName, _cond.Conditions[i].ConditionType));
+                    }
+                    else if (_cond.LogicOperators[i] == TokenType.AND)
+                    {
+                        // For AND, jump to false label if condition is false
+                        AddIR(new IRJump(falseLabel.labelName, oppositeCondition[_cond.Conditions[i].ConditionType]));
+                    }
+                }
+                else
+                {
+                    // Last condition
+                    AddIR(new IRJump(trueLabel.labelName, _cond.Conditions[i].ConditionType));
+                }
             }
-            if(_cond.LeftNode is ASTCondition cond)
+            else
             {
-                leftCompare = ParseCondition(cond);
-                leftConditionType = cond.ConditionType;
+                // Handle null condition
+                if (i < _cond.LogicOperators.Count)
+                {
+                    if (_cond.LogicOperators[i] == TokenType.OR)
+                    {
+                        // For OR, continue to next condition
+                        continue;
+                    }
+                    else if (_cond.LogicOperators[i] == TokenType.AND)
+                    {
+                        // For AND, jump to false label as this condition is effectively false
+                        AddIR(new IRJump(falseLabel.labelName, ConditionType.NONE));
+                        return;
+                    }
+                }
             }
         }
 
-        if (_cond.RightNode != null)
-        {
-            if (_cond.RightNode is ASTLogicCondition rightCond)
-            {
-                ParseLogicalCondition(rightCond, trueLabel, falseLabel);
-            }
-            if (_cond.RightNode is ASTCondition cond)
-            {
-                rightCompare = ParseCondition(cond);
-                rightConditionType = cond.ConditionType;
-            }
-        }
-
-        AddIR(leftCompare);
-        if(_cond.LogicContitionType == TokenType.AND)
-        {
-            AddIR(new IRJump(falseLabel.labelName, oppositeCondition[leftConditionType]));
-
-            if (rightCompare != null)
-            {
-                AddIR(rightCompare);
-                AddIR(new IRJump(falseLabel.labelName, oppositeCondition[rightConditionType]));
-            }
-        }
-        else if(_cond.LogicContitionType == TokenType.OR)
-        {
-            AddIR(new IRJump(trueLabel.labelName, leftConditionType));
-
-            AddIR(rightCompare);
-            if(trueLabel != null) AddIR(new IRJump(falseLabel.labelName, oppositeCondition[rightConditionType]));
-        }
-        else
-        {
-            AddIR(rightCompare);
-            AddIR(new IRJump(falseLabel.labelName, oppositeCondition[rightConditionType]));
-        }
-        
+        // After all conditions, if we reach here:
+        // - For OR chain: all were false or null, so jump to false label
+        // - For AND chain: this should not be reached for non-null conditions, but add a jump to be safe
+        AddIR(new IRJump(falseLabel.labelName, ConditionType.NONE));
     }
 
     private IRCompare ParseCondition(ASTCondition cond)
     {
         Variable leftNodeEvalResult = ParseExpression(cond.LeftNode);
-
         Variable rightNodeEvalResult;
-
         if (cond.RightNode != null)
             rightNodeEvalResult = ParseExpression(cond.RightNode);
         else
             rightNodeEvalResult = new LiteralVariable("1", Types[DataType.INT]);
-
         return new IRCompare(leftNodeEvalResult, rightNodeEvalResult);
     }
 
