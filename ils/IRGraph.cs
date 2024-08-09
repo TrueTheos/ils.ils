@@ -28,6 +28,7 @@ namespace ils
             GenerateGraph();
 
             EliminateUnusedFunctions();
+            PeepholeOptimization();
             //EliminateDeadCode();
 
             ir = ir.Where(x => x != null).ToList();
@@ -85,6 +86,31 @@ namespace ils
                     ir[i] = null;
                 }
             }
+        }
+
+        private void PeepholeOptimization()
+        {
+            RemoveCloseJumps();
+        }
+
+        /// <summary>
+        /// Removes stuff like:
+        /// jmp .label
+        /// .label
+        /// </summary>
+        private void RemoveCloseJumps()
+        {
+            for (int i = 0; i < ir.Count - 1; i++)
+            {
+                if (ir[i] is IRJump jump && ir[i + 1] is IRLabel label)
+                {
+                    if (jump.conditionType == ConditionType.NONE && jump.label == label.labelName)
+                    {
+                        ir[i] = null;
+                    }
+                }
+            }
+            ir = ir.Where(x => x != null).ToList();
         }
 
         private List<GraphNode> GetParentlessNodes()
