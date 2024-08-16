@@ -330,7 +330,7 @@ namespace ils
             {
                 foreach (var strlit in _StringLiterals.Forward.GetDictionary())
                 {
-                    AddAsm($"{strlit.Key} db `{strlit.Value}`");
+                    AddAsm($"{strlit.Key} db `{strlit.Value}`, 0");
                 }
             }
 

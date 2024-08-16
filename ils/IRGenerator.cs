@@ -58,18 +58,6 @@ public class IRGenerator
     {
         ParseScope(mainScope, null, ScopeType.DEFAULT);
 
-        Console.WriteLine("\n");
-        foreach (IRNode irNode in ir)
-        {
-            if (irNode == null) continue;
-            Console.WriteLine(irNode.GetString());
-        }
-
-        /*foreach (var func in _functions.Values)
-        {
-            IR.Add(func);
-        }*/
-
         return ir;
     }
 
@@ -597,9 +585,9 @@ public class IRGenerator
     private void ParseIf(ASTIf ifstmt)
     {
         int labelnum = _Labels.Count;
-        IRLabel label = new($"IF_{labelnum}_START");
         IRLabel bodyLabel = new($"IF_{labelnum}_BODY");
         IRLabel endLabel = new($"IF_{labelnum}_END");
+        IRLabel totalEnd = new($"IF_{labelnum}_TOTALEND");
 
         //IRCompare comp = ParseCondition(ifstmt.Condition);
         //AddIR(comp);
@@ -608,22 +596,22 @@ public class IRGenerator
 
         AddIR(bodyLabel);
         ParseScope(ifstmt.Scope, currentScope, ScopeType.IF);
+        AddIR(new IRJump(totalEnd.labelName, ConditionType.NONE));  
 
         if (ifstmt.Pred != null)
         {    
-            AddIR(new IRJump(endLabel.labelName, ConditionType.NONE));
-            AddIR(label);
-            ParseIfPred(ifstmt.Pred, endLabel);
+            //AddIR(new IRJump(endLabel.labelName, ConditionType.NONE));
             AddIR(endLabel);
+            ParseIfPred(ifstmt.Pred, totalEnd);           
         }
         else
         {
-            AddIR(label);
             AddIR(endLabel);
         }
+        AddIR(totalEnd);
     }
     
-    private void ParseIfPred(ASTIfPred pred, IRLabel endLabel)
+    private void ParseIfPred(ASTIfPred pred, IRLabel totalEndLabel)
     {
         int labelNum = _Labels.Count;
 
@@ -636,22 +624,23 @@ public class IRGenerator
             
 
 
-            IRLabel label = new($"ELSE_{labelNum}_START");
+            IRLabel bodyLabel = new($"ELSE_{labelNum}_BODY");
+            IRLabel endLabel = new($"ELSE_{labelNum}_END");
             if (elif.Pred != null)
-                ParseLogicalCondition(elif.Condition, null, label);
+                ParseLogicalCondition(elif.Condition, bodyLabel, endLabel);
                 //AddIR(new IRJump(label.labelName, oppositeCondition[elif.Condition.ConditionType]));
             else
-                ParseLogicalCondition(elif.Condition, null, endLabel);
-                //AddIR(new IRJump(endLabel.labelName, oppositeCondition[elif.Condition.ConditionType]));
+                ParseLogicalCondition(elif.Condition, bodyLabel, endLabel);
+            //AddIR(new IRJump(endLabel.labelName, oppositeCondition[elif.Condition.ConditionType]));
 
+            AddIR(bodyLabel);
             ParseScope(elif.Scope, currentScope, ScopeType.ELIF);
-
-            AddIR(new IRJump(endLabel.labelName, ConditionType.NONE));
+            AddIR(new IRJump(totalEndLabel.labelName, ConditionType.NONE));
 
             if (elif.Pred != null)
             {
-                AddIR(label);
-                ParseIfPred(elif.Pred, endLabel);
+                AddIR(endLabel);
+                ParseIfPred(elif.Pred, totalEndLabel);
             }
         }
         else if (pred is ASTElsePred elsepred)
@@ -823,7 +812,7 @@ public class IRGenerator
 
         public override string GetString()
         {
-            string r = $"({base.Name}, {Name}, {ReturnType}";
+            string r = $"({base.Name}, {Name}, {ReturnType.Name}";
             foreach (NamedVariable parameter in Parameters) r += $", {parameter.variableName}";
 
             r += ")";
@@ -847,7 +836,7 @@ public class IRGenerator
         public override string GetString()
         {
             string r = $"(CALL, {name}";
-            foreach (Variable parameter in arguments) r += $", {parameter.variableName}";
+            foreach (Variable parameter in arguments) r += $", {parameter.value}";
 
             r += ")";
             return r;
@@ -1057,7 +1046,7 @@ public class IRGenerator
 
         public override string GetString()
         {
-            return $"({Name}, {variableName}, {variableType}, {value})";
+            return $"({Name}, {variableName}, {variableType.Name}, {value})";
         }
 
         public override string GetValueAsString()

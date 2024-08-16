@@ -48,6 +48,12 @@ class ILS
             irGraph = new IRGraph();
             var optimizedIR = irGraph.OptimizeIR(ir);
 
+            Console.WriteLine();
+            foreach (var node in optimizedIR)
+            {
+                Console.WriteLine(node.GetString());
+            }
+
             asmGen = new();
 
             StreamWriter streamWriter = new(OUTPUT_FILE);
