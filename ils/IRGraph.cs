@@ -63,7 +63,7 @@ namespace ils
 
         private void EliminateUnusedFunctions()
         {;
-            foreach (var function in IRGenerator._Functions)
+            foreach (var function in IRGenerator.Functions)
             {
                 if(function.Value.Name != IRGenerator.MAIN_FUNCTION_NAME && !function.Value.WasUsed)
                 {

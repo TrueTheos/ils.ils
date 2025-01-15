@@ -1,19 +1,13 @@
-﻿using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Jobs;
-using BenchmarkDotNet.Running;
-using BenchmarkDotNet.Toolchains.InProcess.Emit;
-using ils;
-using System.Data;
-using static System.Net.Mime.MediaTypeNames;
+﻿using ils;
 
 class ILS
 {
     const string SOURCE_FILE = @"C:\Projects\ils.ils\ils\test.ils";
     const string OUTPUT_FILE = @"C:\Projects\ils.ils\ils\out.asm";
 
-    public static ASMGenerator asmGen;
-    public static IRGenerator irGen;
-    public static IRGraph irGraph;
+    public static ASMGenerator AsmGen;
+    public static IRGenerator IrGen;
+    public static IRGraph IrGraph;
 
     static void Main(string[] args)
     {
@@ -42,11 +36,11 @@ class ILS
             Parser parser = new();
             ASTScope mainScope = parser.Parse(tokens);
 
-            irGen = new();
-            var ir = irGen.Generate(mainScope);
+            IrGen = new();
+            var ir = IrGen.Generate(mainScope);
 
-            irGraph = new IRGraph();
-            var optimizedIR = irGraph.OptimizeIR(ir);
+            IrGraph = new IRGraph();
+            var optimizedIR = IrGraph.OptimizeIR(ir);
 
             Console.WriteLine();
             foreach (var node in optimizedIR)
@@ -54,10 +48,10 @@ class ILS
                 Console.WriteLine(node.GetString());
             }
 
-            asmGen = new();
+            AsmGen = new();
 
             StreamWriter streamWriter = new(OUTPUT_FILE);
-            asmGen.GenerateASM(optimizedIR, streamWriter);
+            AsmGen.GenerateASM(optimizedIR, streamWriter);
 
             watch.Stop();
             var elapsedMs = watch.ElapsedMilliseconds;

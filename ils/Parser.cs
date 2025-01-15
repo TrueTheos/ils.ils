@@ -18,7 +18,7 @@ namespace ils
         public ASTScope Parse(List<Token> tokens)
         {
             _tokens = tokens;
-            _mainScope = new(null, null, ScopeType.DEFAULT);
+            _mainScope = new(null, null, ScopeType.MAIN);
             _currentScope = _mainScope;
 
             while (CanPeek())
@@ -598,7 +598,7 @@ namespace ils
 
             if (Expect(TokenType.OPEN_CURLY))
             {
-                ASTScope scope = ParseScope(_currentScope, ScopeType.DEFAULT);
+                ASTScope scope = ParseScope(_currentScope, ScopeType.MAIN);
 
                 if (scope == null)
                 {

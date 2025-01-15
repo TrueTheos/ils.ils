@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ils.Variables;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
@@ -99,7 +100,7 @@ namespace ils
             public struct StackVar
             {
                 public int Offset;
-                public Variable var;
+                public BaseVariable var;
             }
         }
 
@@ -326,9 +327,9 @@ namespace ils
             AddAsm("intFormatNl db \"%d\", 10, 0");
             AddAsm("charFormatNl db \"%c\", 10, 0");
 
-            if (_StringLiterals.Forward.Count > 0)
+            if (StringLiterals.Forward.Count > 0)
             {
-                foreach (var strlit in _StringLiterals.Forward.GetDictionary())
+                foreach (var strlit in StringLiterals.Forward.GetDictionary())
                 {
                     AddAsm($"{strlit.Key} db `{strlit.Value}`, 0");
                 }
@@ -399,7 +400,7 @@ namespace ils
             }
             else
             {
-                List<Variable> args = func.arguments;
+                List<BaseVariable> args = func.arguments;
                 args.Reverse();
                 foreach (var argument in args)
                 {
@@ -409,7 +410,7 @@ namespace ils
             }
         }
 
-        private void GenerateVariable(Variable var)
+        private void GenerateVariable(BaseVariable var)
         {
             if (var is NamedVariable namedVar)
             {
@@ -474,7 +475,7 @@ namespace ils
                         if (namedVar.variableType.DataType == DataType.IDENTIFIER)
                         {
                             Address destination = GetLocation(namedVar, GetLocationUseCase.MovedTo, false);
-                            Address source = GetLocation(IRGenerator._AllVariables.Values
+                            Address source = GetLocation(IRGenerator.AllVariables.Values
                                     .Where(x => x.guid.ToString() == namedVar.value).First(),
                                     GetLocationUseCase.None, false);
                             
@@ -501,7 +502,7 @@ namespace ils
             }
         }  
 
-        public void GenerateTempVariable(Variable var)
+        public void GenerateTempVariable(BaseVariable var)
         {
             Register reg;
 
@@ -522,7 +523,7 @@ namespace ils
                     AutoMov(new RegAddress(reg.Type), new ValueAddress(var.value));
                     break;
                 case DataType.IDENTIFIER:
-                    AutoMov(new RegAddress(reg.Type),GetLocation(IRGenerator._AllVariables[var.value], GetLocationUseCase.None, false));
+                    AutoMov(new RegAddress(reg.Type), GetLocation(IRGenerator.AllVariables[var.value], GetLocationUseCase.None, false));
                     break;
                 case DataType.ARRAY:
                     ErrorHandler.Custom("Tego nie wolno");
@@ -560,7 +561,7 @@ namespace ils
                     // AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
                     break;
                 case DataType.IDENTIFIER:
-                    val = GetLocation(IRGenerator._AllVariables.Values.Where(x => x.variableName == asign.value).First(), GetLocationUseCase.None, false);
+                    val = GetLocation(IRGenerator.AllVariables.Values.Where(x => x.variableName == asign.value).First(), GetLocationUseCase.None, false);
                     if (val is RegAddress regAddress && regAddress.Reg == RegType.rbp)
                     {
                         Register reg = GetRegister("", false);
@@ -778,7 +779,7 @@ namespace ils
         private void GenerateIRNode(IRNode node)
         {
             if (node is IRLabel label) { AddAsm($".{label.labelName}:"); }
-            if (node is Variable variable) { GenerateVariable(variable); }
+            if (node is BaseVariable variable) { GenerateVariable(variable); }
             if (node is IRAssign asign) { GenerateAssign(asign); }
             if (node is IRFunction func) { GenerateFunction(func); }
             if (node is IRFunctionPrologue prologue) { FunctionPrologue(prologue); }
@@ -817,7 +818,7 @@ namespace ils
             return "";
         }
 
-        public Address GetLocation(Variable var, GetLocationUseCase useCase, bool generateLiteral)
+        public Address GetLocation(BaseVariable var, GetLocationUseCase useCase, bool generateLiteral)
         {
             if (var is TempVariable temp)
             {
@@ -950,7 +951,7 @@ namespace ils
         {
             public string Name;
             public Word Word;
-            public Variable Var;
+            public BaseVariable Var;
             public string InitialValue;
         }
 

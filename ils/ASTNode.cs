@@ -26,7 +26,7 @@ namespace ils
 
     public abstract record ASTExpression : ASTStatement;
 
-    public enum ScopeType { DEFAULT, IF, ELIF, ELSE, LOOP, FUNCTION }
+    public enum ScopeType { MAIN, IF, ELIF, ELSE, LOOP, FUNCTION }
     public record ASTScope : ASTStatement
     {
         public List<ASTStatement> Statements { get; set; }
