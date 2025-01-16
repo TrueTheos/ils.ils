@@ -28,10 +28,10 @@ namespace ils.IR.Variables
             VarVal = val;
         }
 
-        public void AssignVariable(BaseVariable var)
+        public void AssignVariable(BaseVariable val)
         {
-            SetValue(var.VarVal);
-           // if (val is FunctionReturnVariable) SetValue("rax", val.Type);
+            if (val is TempVariable || val is NamedVariable) SetValue(new VarValue(TypeSystem.Types[ils.DataType.IDENTIFIER], val.ID.ID));
+            if (val is LiteralVariable || val is FunctionReturnVariable || val is ArrayVariable) SetValue(val.VarVal);
         }
 
         public override string GetString()
