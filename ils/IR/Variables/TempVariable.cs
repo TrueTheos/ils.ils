@@ -15,8 +15,6 @@ namespace ils.IR.Variables
             this.variableName = variableName;
             variableType = varType;
             SetValue(value, variableType);
-
-            IRGenerator.AllVariables.Add(guid.ToString(), this);
         }
 
         public override string GetString()
