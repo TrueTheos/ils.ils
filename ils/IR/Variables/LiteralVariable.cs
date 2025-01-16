@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace ils.Variables
+namespace ils.IR.Variables
 {
     public class LiteralVariable : BaseVariable
     {
@@ -34,8 +34,6 @@ namespace ils.Variables
                 variableName = value.ToString();
                 SetValue(value, variableType);
             }
-
-            IRGenerator.AllVariables.Add(guid.ToString(), this);
         }
 
         public override string GetString()

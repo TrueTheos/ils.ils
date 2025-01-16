@@ -1,6 +1,7 @@
 ﻿using DotNetGraph.Compilation;
 using DotNetGraph.Core;
 using DotNetGraph.Extensions;
+using ils.IR;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

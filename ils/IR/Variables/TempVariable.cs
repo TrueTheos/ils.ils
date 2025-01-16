@@ -5,30 +5,27 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace ils.Variables
+namespace ils.IR.Variables
 {
-    public class ArrayVariable : BaseVariable
+    public class TempVariable : BaseVariable
     {
-        public int Length;
-
-        public ArrayVariable(TypeSystem.Type varType, string value, int arrayLength)
+        public TempVariable(string variableName, TypeSystem.Type varType, string value)
         {
-            Name = "ARRAY_VAR";
+            Name = "TEMP_VAR";
+            this.variableName = variableName;
             variableType = varType;
             SetValue(value, variableType);
-
-            IRGenerator.AllVariables.Add(guid.ToString(), this);
-            Length = arrayLength;
         }
 
         public override string GetString()
         {
-            return $"({Name}, {value})";
+            return $"({Name}, {guid}, {value})";
         }
 
         public override string GetValueAsString()
         {
-            return value;
+            return guid.ToString();
         }
     }
+
 }

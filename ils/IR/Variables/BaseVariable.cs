@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static ils.IRGenerator;
 
-namespace ils.Variables
+namespace ils.IR.Variables
 {
     public abstract class BaseVariable : IRNode
     {
@@ -23,6 +23,7 @@ namespace ils.Variables
         public BaseVariable()
         {
             guid = NewId();
+            IRGenerator.AllVariables.Add(guid, this);
         }
 
         public void SetValue(string val, TypeSystem.Type valType)

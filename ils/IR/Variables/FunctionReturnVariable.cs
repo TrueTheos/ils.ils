@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using static ils.IRGenerator;
 using System.Xml.Linq;
 
-namespace ils.Variables
+namespace ils.IR.Variables
 {
     public class FunctionReturnVariable : BaseVariable
     {
@@ -23,8 +23,6 @@ namespace ils.Variables
             this.index = index;
             this.call = call;
             //SetValue(reg, variableType);
-
-            AllVariables[guid.ToString()] = this;
         }
 
         public override string GetString()

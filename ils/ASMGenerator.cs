@@ -1,4 +1,5 @@
-﻿using ils.Variables;
+﻿using ils.IR;
+using ils.IR.Variables;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -764,7 +765,7 @@ namespace ils
 
         private void GenerateScopeStart(IRScopeStart start)
         {
-            currentScope = new Scope(start.scope.id);
+            currentScope = new Scope(start.scope.Id);
             foreach (var par in currentFunc.Parameters)
             {
                 GenerateVariable(par);

@@ -1,4 +1,5 @@
-﻿using ils.Variables;
+﻿using ils.IR;
+using ils.IR.Variables;
 using static ils.ASTCondition;
 using static ils.TypeSystem;
 
@@ -9,11 +10,14 @@ public class IRGenerator
     public const string MAIN_FUNCTION_LABEL = "FUNC_MAIN_START";
     public const string MAIN_FUNCTION_NAME = "main";
 
-    private static Dictionary<string, IRLabel> _labels = new();
+    public static Dictionary<string, IRLabel> Labels = new();
 
     // Variables
     public static Dictionary<string, BaseVariable> AllVariables = new();
+
     private static Dictionary<string, NamedVariable> _globalVariables = new();
+    public static Dictionary<string, NamedVariable> GlobalVariables { get => _globalVariables; }
+
     private static Dictionary<string, TempVariable> _tempVariables = new();
 
     public static Dictionary<string, IRFunction> Functions = new();
@@ -50,6 +54,14 @@ public class IRGenerator
         return _ir;
     }
 
+
+    public static void AddLabel(IRLabel label)
+    {
+        if (Labels.ContainsKey(label.labelName)) ErrorHandler.Custom($"Label {label.labelName} already exists!");
+
+        IRGenerator.Labels.Add(label.labelName, label);
+    }
+
     public void AddIR(IRNode node)
     {
         if (_currentFunction != null)
@@ -84,7 +96,7 @@ public class IRGenerator
         {
             _currentScope = new Scope(_scopes.Keys.Count, scopeType);
             _currentScope.SetParent(parentScope);
-            _scopes.Add(_currentScope.id, _currentScope);
+            _scopes.Add(_currentScope.Id, _currentScope);
         }
 
         IRLabel scopeStart = null;
@@ -108,13 +120,13 @@ public class IRGenerator
                 scopeEnd = new IRLabel($"FUNC_{fun.Identifier.Value}_END");
                 break;
             default:
-                scopeStart = new IRLabel($"{scopeType}_{_currentScope.id}_START");
-                scopeEnd = new IRLabel($"{scopeType}_{_currentScope.id}_END");
+                scopeStart = new IRLabel($"{scopeType}_{_currentScope.Id}_START");
+                scopeEnd = new IRLabel($"{scopeType}_{_currentScope.Id}_END");
                 break;
         }
 
         _scopeLabels.Add(astScope, new ScopeLabels() { startLabel = scopeStart, endLabel = scopeEnd });
-        if (_currentScope.id != 0)
+        if (_currentScope.Id != 0)
         {
             AddIR(scopeStart);
             if (scopeType == ScopeType.FUNCTION)
@@ -124,12 +136,11 @@ public class IRGenerator
             }
         }
 
-        if (_currentScope.id == 0) //We are in the main scope
+        if (_currentScope.Id == 0) //We are in the main scope
         {
             var vars = astScope.GetStatementsOfType<ASTVariableDeclaration>().ToList();
             foreach (ASTVariableDeclaration dec in vars)
             {
-                _globalVariables.Add(dec.Name.Value, null);
                 ParseVarialbeDeclaration(dec, astScope);
             }
 
@@ -171,12 +182,12 @@ public class IRGenerator
 
         _tempVariables.Clear();
 
-        if (_currentScope.id != 0)
+        if (_currentScope.Id != 0)
         {
             AddIR(scopeEnd);
             if (scopeType == ScopeType.FUNCTION)
             {
-                funcPrologue.localVariables = _currentScope.localVariables.Count;
+                funcPrologue.localVariables = _currentScope.LocalVariables.Count;
                 AddIR(new IRFunctionEpilogue());
                 AddIR(irScopeEnd);
                 _currentFunction = null;
@@ -383,7 +394,7 @@ public class IRGenerator
         {
             AddIR(ircall);
             if (Functions.ContainsKey(func.Name)) Functions[func.Name].UseCount++;
-            return new FunctionReturnVariable(func.Name, func.ReturnType, _currentScope.localVariables.Count, ircall);
+            return new FunctionReturnVariable(func.Name, func.ReturnType, _currentScope.LocalVariables.Count, ircall);
         }
         else
         {
@@ -477,7 +488,7 @@ public class IRGenerator
 
     private void ParseWhile(ASTWhile whilestmt)
     {
-        int labelnum = _labels.Count;
+        int labelnum = Labels.Count;
 
         //string conditionResultName = CreateNewTempVar(DataType.BOOL, "0");
 
@@ -570,7 +581,7 @@ public class IRGenerator
 
     private void ParseIf(ASTIf ifstmt)
     {
-        int labelnum = _labels.Count;
+        int labelnum = Labels.Count;
         IRLabel bodyLabel = new($"IF_{labelnum}_BODY");
         IRLabel endLabel = new($"IF_{labelnum}_END");
         IRLabel totalEnd = new($"IF_{labelnum}_TOTALEND");
@@ -599,7 +610,7 @@ public class IRGenerator
     
     private void ParseIfPred(ASTIfPred pred, IRLabel totalEndLabel)
     {
-        int labelNum = _labels.Count;
+        int labelNum = Labels.Count;
 
         if (pred is ASTElifPred elif)
         {
@@ -707,357 +718,6 @@ public class IRGenerator
             }
 
         return true;
-    }
-
-    public class IRReturn : IRNode
-    {
-        public BaseVariable ret;
-
-        public IRReturn(BaseVariable ret, int valuesOnStackToClear)
-        {
-            Name = "RETURN";
-
-            this.ret = ret;
-        }
-
-        public override string GetString()
-        {
-            return $"({Name}, {ret.variableName})";
-        }
-    }
-
-    public class IRArray : IRNode
-    {
-        public override string GetString()
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    public class IRDestroyTemp : IRNode
-    {
-        public string temp;
-
-        public IRDestroyTemp(string temp)
-        {
-            Name = "DESTROY_TEMP";
-            this.temp = temp;
-        }
-
-        public override string GetString()
-        {
-            return $"({Name}, {temp})";
-        }
-    }
-
-    public class IRFunctionPrologue : IRNode
-    {
-        public int localVariables;
-
-        public IRFunctionPrologue()
-        {
-            Name = "PROLOGUE";
-        }
-
-        public override string GetString()
-        {
-            return $"({Name})";
-        }
-    }
-
-    public class IRFunctionEpilogue : IRNode
-    {
-        public IRFunctionEpilogue()
-        {
-            Name = "EPILOGUE";
-        }
-
-        public override string GetString()
-        {
-            return $"({Name})";
-        }
-    }
-
-    public class IRFunction : IRNode
-    {
-        public string Name;
-        public TypeSystem.Type ReturnType = Types[DataType.VOID];
-        public List<NamedVariable> Parameters = new();
-        public List<IRNode> Nodes = new();
-        public int UseCount;
-
-        public bool WasUsed => UseCount > 0;
-
-        public IRFunction(string name, TypeSystem.Type returnType, List<NamedVariable> parameters)
-        {
-            base.Name = "FUNC";
-            this.Name = name;
-            if (returnType != null) ReturnType = returnType;
-            Parameters = parameters;
-        }
-
-        public override string GetString()
-        {
-            string r = $"({base.Name}, {Name}, {ReturnType.Name}";
-            foreach (NamedVariable parameter in Parameters) r += $", {parameter.variableName}";
-
-            r += ")";
-            return r;
-        }
-    }
-
-    public class IRFunctionCall : IRNode
-    {
-        public string name;
-        public List<BaseVariable> arguments = new();
-
-        public IRFunctionCall(string name, List<BaseVariable> arguments)
-        {
-            Name = "FUNC_CALL";
-
-            this.name = name;
-            this.arguments = arguments;
-        }
-
-        public override string GetString()
-        {
-            string r = $"(CALL, {name}";
-            foreach (BaseVariable parameter in arguments) r += $", {parameter.value}";
-
-            r += ")";
-            return r;
-        }
-    }
-
-    public class IRCompare : IRNode
-    {
-        public BaseVariable a;
-        public BaseVariable b;
-
-        public IRCompare(BaseVariable a, BaseVariable b)
-        {
-            Name = "COMPARE";
-
-            this.a = a;
-            this.b = b;
-        }
-
-        public override string GetString()
-        {
-            return $"({Name}, {a.variableName}, {b.variableName})";
-        }
-    }
-
-    public class IRJump : IRNode
-    {
-        public string label;
-        public ConditionType conditionType;
-
-        public IRJump(string label, ConditionType conditionType)
-        {
-            this.label = label;
-            this.conditionType = conditionType;
-
-            switch (this.conditionType)
-            {
-                case ConditionType.EQUAL:
-                    Name = "JUMP_EQUAL";
-                    break;
-                case ConditionType.NOT_EQUAL:
-                    Name = "JUMP_NOT_EQUAL";
-                    break;
-                case ConditionType.LESS:
-                    Name = "JUMP_LESS";
-                    break;
-                case ConditionType.LESS_EQUAL:
-                    Name = "JUMP_LESS_EQUAL";
-                    break;
-                case ConditionType.GREATER:
-                    Name = "JUMP_GREATER";
-                    break;
-                case ConditionType.GREATER_EQUAL:
-                    Name = "JUMP_GREATER_EQUAL";
-                    break;
-                case ConditionType.NONE:
-                    Name = "JUMP";
-                    break;
-            }
-        }
-
-        public override string GetString()
-        {
-            return $"({Name}, {label})";
-        }
-    }
-    public abstract class IRNode
-    {
-        protected string Name;
-
-        public abstract string GetString();
-    }
-
-    public class IRAssign : IRNode
-    {
-        public BaseVariable identifier;
-        public TypeSystem.Type assignedType;
-        public string value;
-        public ArrayIndexedVariable indexedArray; //todo fix
-
-        public IRAssign(BaseVariable identifier, string value, TypeSystem.Type assignedType)
-        {
-            Name = "ASSIGN";
-
-            this.identifier = identifier;
-            this.value = value;
-            this.assignedType = assignedType;
-        }
-
-        public override string GetString()
-        {
-            return $"({Name}, {identifier.variableName}, {value})";
-        }
-    }
-
-    public class IRLabel : IRNode
-    {
-        public string labelName;
-
-        public IRLabel(string name)
-        {
-            Name = "LABEL";
-
-            labelName = name;
-
-            if (_labels.ContainsKey(labelName)) ErrorHandler.Custom($"Label {labelName} already exists!");
-
-            _labels.Add(labelName, this);
-        }
-
-        public override string GetString()
-        {
-            return $"({Name}, {labelName})";
-        }
-    }
-
-    public class IRArithmeticOp : IRNode
-    {
-        public BaseVariable resultLocation;
-        public BaseVariable a;
-        public BaseVariable b;
-        public ArithmeticOpType opType;
-
-        public IRArithmeticOp(BaseVariable resultLocation, BaseVariable a, BaseVariable b, ArithmeticOpType opType)
-        {
-            this.resultLocation = resultLocation;
-            this.a = a;
-            this.b = b;
-            this.opType = opType;
-
-            switch (opType)
-            {
-                case ArithmeticOpType.ADD:
-                    Name = "ADD";
-                    break;
-                case ArithmeticOpType.MUL:
-                    Name = "MUL";
-                    break;
-                case ArithmeticOpType.SUB:
-                    Name = "SUB";
-                    break;
-                case ArithmeticOpType.DIV:
-                    Name = "DIV";
-                    break;
-                case ArithmeticOpType.MOD:
-                    Name = "MOD";
-                    break;
-            }
-        }
-
-        public override string GetString()
-        {
-            return $"({Name}, {resultLocation.guid} = {a.guid}, {b.guid})";
-        }
-    }
-
-    public class IRScopeStart : IRNode
-    {
-        public Scope scope;
-
-        public IRScopeStart(Scope scope)
-        {
-            Name = "START_SCOPE";
-            this.scope = scope;
-        }
-
-        public override string GetString()
-        {
-            return $"({Name})";
-        }
-    }
-
-    public class IRScopeEnd : IRNode
-    {
-        public Scope scope;
-        public int valuesToClear;
-
-        public IRScopeEnd(Scope scope)
-        {
-            Name = "END_SCOPE";
-            this.scope = scope;
-        }
-
-        public override string GetString()
-        {
-            return $"({Name})";
-        }
-    }
-
-    public class Scope
-    {
-        public int id;
-        public Scope parent = null;
-        public Dictionary<int, Scope> childs = new();
-        public Dictionary<string, BaseVariable> allVariables = new();
-        public Dictionary<string, BaseVariable> localVariables = new();
-        public ScopeType scopeType;
-
-        public Scope(int _id, ScopeType _scopeType)
-        {
-            id = _id;
-            scopeType = _scopeType;
-        }
-
-        public void SetParent(Scope _parent)
-        {
-            parent = _parent;
-            foreach (var var in _parent.allVariables)
-                allVariables.Add(var.Key, var.Value);
-
-            _parent.childs.Add(id, this);
-        }
-
-        public BaseVariable GetVariable(Token name)
-        {
-            VariableExistsErr(name);
-            return allVariables[name.Value];
-        }
-
-        public bool VariableExists(string name)
-        {
-            return (allVariables.ContainsKey(name) && allVariables[name] != null) ||
-                   (_globalVariables.ContainsKey(name) && _globalVariables[name] != null);
-        }
-
-        public void VariableExistsErr(Token name)
-        {
-            if(!VariableExists(name.Value)) ErrorHandler.Throw(new VariableDoesntExistError(name.Value, name.Line));
-        }
-
-        public void AddLocalVariable(BaseVariable var)
-        {
-            localVariables.Add(var.variableName, var);
-            allVariables.Add(var.variableName, var);
-        }
     }
 
     public static int ids = 0;

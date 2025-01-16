@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using static ils.TypeSystem;
 using System.Xml.Linq;
 
-namespace ils.Variables
+namespace ils.IR.Variables
 {
     public class NamedVariable : BaseVariable
     {
@@ -49,13 +49,11 @@ namespace ils.Variables
                         break;
                 }
             }
-
-            IRGenerator.AllVariables.Add(guid.ToString(), this);
         }
 
         public override string GetString()
         {
-            return $"({Name}, {variableName}, {variableType.Name}, {value})";
+            return $"({Name}, {guid}, {variableType.Name}, {value})";
         }
 
         public override string GetValueAsString()
