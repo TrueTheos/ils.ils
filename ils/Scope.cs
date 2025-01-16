@@ -12,8 +12,8 @@ namespace ils
         public int Id;
         public Scope Parent = null;
         public Dictionary<int, Scope> Children = new();
-        public HashSet<string> AllVariables => GetVariables();
-        public HashSet<string> LocalVariables = new();
+        public Dictionary<string, BaseVariable> AllVariables = new();
+        public Dictionary<string, BaseVariable> LocalVariables = new();
         public ScopeType scopeType;
 
         public Scope(int _id, ScopeType _scopeType)
@@ -25,31 +25,21 @@ namespace ils
         public void SetParent(Scope _parent)
         {
             Parent = _parent;
+            foreach (var var in _parent.AllVariables)
+                AllVariables.Add(var.Key, var.Value);
 
             _parent.Children.Add(Id, this);
-        }
-
-        public HashSet<string> GetVariables()
-        {
-            var res = LocalVariables;
-
-            if(Parent != null)
-            {
-                res.UnionWith(Parent.GetVariables());
-            }
-
-            return res;
         }
 
         public BaseVariable GetVariable(Token name)
         {
             VariableExistsErr(name);
-            return IRGenerator.GetVariable(name.Value);
+            return AllVariables[name.Value];
         }
 
         public bool VariableExists(string name)
         {
-            return (AllVariables.Contains(name)) ||
+            return (AllVariables.ContainsKey(name) && AllVariables[name] != null) ||
                    (IRGenerator.GlobalVariables.ContainsKey(name) && IRGenerator.GlobalVariables[name] != null);
         }
 
@@ -60,7 +50,8 @@ namespace ils
 
         public void AddLocalVariable(BaseVariable var)
         {
-            LocalVariables.Add(var.guid);
+            LocalVariables.Add(var.variableName, var);
+            AllVariables.Add(var.variableName, var);
         }
     }
 }

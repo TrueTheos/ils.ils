@@ -34,6 +34,8 @@ namespace ils.IR.Variables
                 variableName = value.ToString();
                 SetValue(value, variableType);
             }
+
+            IRGenerator.AllVariables.Add(guid.ToString(), this);
         }
 
         public override string GetString()

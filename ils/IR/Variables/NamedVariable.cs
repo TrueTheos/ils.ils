@@ -49,6 +49,8 @@ namespace ils.IR.Variables
                         break;
                 }
             }
+
+            IRGenerator.AllVariables.Add(guid.ToString(), this);
         }
 
         public override string GetString()

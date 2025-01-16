@@ -23,6 +23,8 @@ namespace ils.IR.Variables
             this.index = index;
             this.call = call;
             //SetValue(reg, variableType);
+
+            AllVariables[guid.ToString()] = this;
         }
 
         public override string GetString()

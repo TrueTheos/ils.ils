@@ -54,7 +54,6 @@ public class IRGenerator
         return _ir;
     }
 
-
     public static void AddLabel(IRLabel label)
     {
         if (Labels.ContainsKey(label.labelName)) ErrorHandler.Custom($"Label {label.labelName} already exists!");
@@ -141,6 +140,7 @@ public class IRGenerator
             var vars = astScope.GetStatementsOfType<ASTVariableDeclaration>().ToList();
             foreach (ASTVariableDeclaration dec in vars)
             {
+                _globalVariables.Add(dec.Name.Value, null);
                 ParseVarialbeDeclaration(dec, astScope);
             }
 
@@ -173,7 +173,7 @@ public class IRGenerator
 
         foreach (var temp in _tempVariables) AddIR(new IRDestroyTemp(temp.Key));
 
-        foreach (var local in _currentScope.localVariables)
+        foreach (var local in _currentScope.LocalVariables)
         {
             if (local.Value is TempVariable) AddIR(new IRDestroyTemp(local.Key));
             if (local.Value is NamedVariable named && !named.isGlobal && !named.isFuncArg)
@@ -288,7 +288,7 @@ public class IRGenerator
     {
         if (_currentScope.VariableExists(vardec.Name.Value))
         {
-            if (_currentScope.id == 0) return;
+            if (_currentScope.Id == 0) return;
             ErrorHandler.Custom($"[{vardec.Name.Line}] Variable '{vardec.Name.Value}' already exists!'");
         }
         else
@@ -306,7 +306,7 @@ public class IRGenerator
                     break;
             }
 
-            if (_currentScope.id == 0) _globalVariables[vardec.Name.Value] = (NamedVariable)newVar;
+            if (_currentScope.Id == 0) _globalVariables[vardec.Name.Value] = (NamedVariable)newVar;
 
             //_variables.Add(newVar.variableName, newVar);
             _currentScope.AddLocalVariable(newVar);
@@ -440,7 +440,7 @@ public class IRGenerator
 
     private void ParseAssign(ASTAssign assign)
     {
-        BaseVariable asnVar = _currentScope.allVariables[assign.Identifier.Value];
+        BaseVariable asnVar = _currentScope.AllVariables[assign.Identifier.Value];
 
         if (assign.Value is ASTIdentifier identifier)
         {
@@ -464,7 +464,7 @@ public class IRGenerator
         }
         else
         {
-            BaseVariable saveLocation = _currentScope.allVariables[assign.Identifier.Value];
+            BaseVariable saveLocation = _currentScope.AllVariables[assign.Identifier.Value];
             BaseVariable var = ParseExpression(assign.Value);
 
             if (var is TempVariable tempVar)
@@ -651,7 +651,7 @@ public class IRGenerator
         if (_expression is ASTIdentifier identifier)
         {
             _currentScope.VariableExistsErr(identifier.token);
-            return _currentScope.allVariables[identifier.Name];
+            return _currentScope.AllVariables[identifier.Name];
         }
         else if (_expression is ASTLiteral literal)
         {

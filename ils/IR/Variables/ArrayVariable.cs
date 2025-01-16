@@ -16,6 +16,8 @@ namespace ils.IR.Variables
             Name = "ARRAY_VAR";
             variableType = varType;
             SetValue(value, variableType);
+
+            IRGenerator.AllVariables.Add(guid.ToString(), this);
             Length = arrayLength;
         }
 
