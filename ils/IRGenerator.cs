@@ -13,7 +13,7 @@ public class IRGenerator
     public static Dictionary<string, IRLabel> Labels = new();
 
     // Variables
-    public static Dictionary<string, BaseVariable> AllVariables = new();
+    public static Dictionary<VarID, BaseVariable> AllVariables = new();
 
     private static Dictionary<string, NamedVariable> _globalVariables = new();
     public static Dictionary<string, NamedVariable> GlobalVariables { get => _globalVariables; }
@@ -77,7 +77,7 @@ public class IRGenerator
     private string CreateNewTempVar(TypeSystem.Type varType, string value, string name = "")
     {
         string varName = $"TEMP_{(name != "" ? name + "_" : "")}{AllVariables.Keys.Count}";
-        TempVariable tempVar = new(varName, varType, value);
+        TempVariable tempVar = new(varName, new VarValue(varType, value));
         _tempVariables.Add(varName, tempVar);
         AddIR(tempVar);
         return varName;
@@ -315,14 +315,7 @@ public class IRGenerator
             {
                 BaseVariable var = ParseExpression(vardec.Value);
 
-                if (var is ArrayIndexedVariable indexed)
-                {
-                    newVar.indexedVar = indexed;
-                }
-                else
-                {
-                    newVar.AssignVariable(var);
-                }
+                newVar.AssignVariable(var);
             }
 
             AddIR(newVar);
@@ -363,7 +356,7 @@ public class IRGenerator
 
             if (arg is TempVariable || arg is NamedVariable)
             {
-                string temp = CreateNewTempVar(arg.variableType, "0");
+                string temp = CreateNewTempVar(arg.DataType, "0");
                 TempVariable tempVar = _tempVariables[temp];
                 tempVar.AssignVariable(arg);
                 arguments.Add(tempVar);
@@ -399,7 +392,7 @@ public class IRGenerator
         else
         {
             AddIR(ircall);
-            foreach (BaseVariable arg in arguments) arg.needsPreservedReg = true;
+            foreach (BaseVariable arg in arguments) arg.NeedsPreservedReg = true;
         }
 
         return null;
@@ -468,14 +461,14 @@ public class IRGenerator
             BaseVariable var = ParseExpression(assign.Value);
 
             if (var is TempVariable tempVar)
-                AddIR(new IRAssign(saveLocation, tempVar.variableName, Types[DataType.IDENTIFIER]));
+                AddIR(new IRAssign(saveLocation, tempVar.VarName, Types[DataType.IDENTIFIER]));
             if (var is NamedVariable namedVar)
-                AddIR(new IRAssign(saveLocation, namedVar.variableName, Types[DataType.IDENTIFIER]));
+                AddIR(new IRAssign(saveLocation, namedVar.VarName, Types[DataType.IDENTIFIER]));
             if (var is LiteralVariable literalVar)
-                AddIR(new IRAssign(saveLocation, literalVar.value.ToString(), literalVar.variableType));
+                AddIR(new IRAssign(saveLocation, literalVar.VarVal.ToString(), literalVar.DataType));
             if (var is FunctionReturnVariable funcVar)
                 //_IR.Add(new IRAssign(saveLocation, regVar.value.ToString(), regVar.variableType));
-                AddIR(new IRAssign(saveLocation, funcVar.variableName, Types[DataType.IDENTIFIER]));
+                AddIR(new IRAssign(saveLocation, funcVar.VarName, Types[DataType.IDENTIFIER]));
             if (var is ArrayIndexedVariable indexVar)
             {
                 var asgn = new IRAssign(saveLocation, indexVar.Index.ToString(), Types[DataType.IDENTIFIER]);
@@ -575,7 +568,7 @@ public class IRGenerator
         if (cond.RightNode != null)
             rightNodeEvalResult = ParseExpression(cond.RightNode);
         else
-            rightNodeEvalResult = new LiteralVariable("1", Types[DataType.INT]);
+            rightNodeEvalResult = new LiteralVariable(new VarValue(Types[DataType.INT], "1"));
         return new IRCompare(leftNodeEvalResult, rightNodeEvalResult);
     }
 
@@ -655,7 +648,7 @@ public class IRGenerator
         }
         else if (_expression is ASTLiteral literal)
         {
-            return new LiteralVariable(literal.Value, literal.VariableType);
+            return new LiteralVariable(new VarValue(literal.VariableType, literal.Value));
         }
         else if (_expression is ASTFunctionCall funcCall)
         {
@@ -673,12 +666,12 @@ public class IRGenerator
             foreach (ASTExpression item in arrayConstructor.Values)
             {
                 BaseVariable parsedItem = ParseExpression(item);
-                vals.Add(parsedItem.value);
+                vals.Add(parsedItem.Value);
             }
 
             val = string.Join(", ", vals);
 
-            return new ArrayVariable(arrayConstructor.Type, val, arrayConstructor.Length);
+            return new ArrayVariable(new VarValue(arrayConstructor.Type, val), arrayConstructor.Length);
         }
         else if (_expression is ASTArithmeticOperation arithmeticOp)
         {
@@ -686,21 +679,21 @@ public class IRGenerator
 
             BaseVariable rightVar = ParseExpression(arithmeticOp.RightNode);
 
-            if (!VerifyOperation(leftVar.variableType.DataType, rightVar.variableType.DataType,
+            if (!VerifyOperation(leftVar.DataType.DataType, rightVar.DataType.DataType,
                     arithmeticOp.Operation)) return null;
 
             if (CanEvalArtihmeticExpr(arithmeticOp))
             {
                 int x = MathEvaluator.Evaluate(arithmeticOp);
-                return new LiteralVariable(x.ToString(), Types[DataType.INT]);
+                return new LiteralVariable(new VarValue(Types[DataType.INT], x.ToString()));
             }
 
             string resultName = CreateNewTempVar(Types[DataType.INT], "0", "OP_RES");
             TempVariable result = _tempVariables[resultName];
 
             AddIR(new IRArithmeticOp(result, leftVar, rightVar, arithmeticOp.Operation));
-            if (leftVar is TempVariable) AddIR(new IRDestroyTemp(leftVar.variableName));
-            if (rightVar is TempVariable) AddIR(new IRDestroyTemp(rightVar.variableName));
+            if (leftVar is TempVariable) AddIR(new IRDestroyTemp(leftVar.VarName));
+            if (rightVar is TempVariable) AddIR(new IRDestroyTemp(rightVar.VarName));
             return result;
         }
 
@@ -722,8 +715,13 @@ public class IRGenerator
 
     public static int ids = 0;
 
-    public static string NewId()
+    public static VarID NewId()
     {
-        return "ID_" + ids++;
+        return new VarID("ID_" + ids++);
+    }
+
+    public struct VarID(string id)
+    {
+        public string ID = id;
     }
 }

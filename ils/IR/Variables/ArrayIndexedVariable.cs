@@ -17,16 +17,12 @@ namespace ils.IR.Variables
             Name = "ARRAY_INDEXED_VAR";
             Index = index;
             Array = array;
+            SetValue(new VarValue(array.DataType, "", this));
         }
 
         public override string GetString()
         {
-            return $"({Name}, {Index})";
-        }
-
-        public override string GetValueAsString()
-        {
-            return "";
+            return $"({VarName}, {Index})";
         }
     }
 }

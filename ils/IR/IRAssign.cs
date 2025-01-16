@@ -25,7 +25,7 @@ namespace ils.IR
 
         public override string GetString()
         {
-            return $"({Name}, {identifier.guid}, {value})";
+            return $"({Name}, {identifier.ID.ID}, {value})";
         }
     }
 }

@@ -28,7 +28,7 @@ namespace ils.IR
         public override string GetString()
         {
             string r = $"({base.Name}, {Name}, {ReturnType.Name}";
-            foreach (NamedVariable parameter in Parameters) r += $", {parameter.variableName}";
+            foreach (NamedVariable parameter in Parameters) r += $", {parameter.VarName}";
 
             r += ")";
             return r;

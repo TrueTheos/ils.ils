@@ -50,8 +50,8 @@ namespace ils
 
         public void AddLocalVariable(BaseVariable var)
         {
-            LocalVariables.Add(var.variableName, var);
-            AllVariables.Add(var.variableName, var);
+            LocalVariables.Add(var.VarName, var);
+            AllVariables.Add(var.VarName, var);
         }
     }
 }

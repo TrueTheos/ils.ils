@@ -23,7 +23,7 @@ namespace ils.IR
         public override string GetString()
         {
             string r = $"(CALL, {name}";
-            foreach (BaseVariable parameter in arguments) r += $", {parameter.value}";
+            foreach (BaseVariable parameter in arguments) r += $", {parameter.Value}";
 
             r += ")";
             return r;

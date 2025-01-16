@@ -17,48 +17,39 @@ namespace ils.IR.Variables
         {
             Name = "NAMED_VAR";
 
-            variableName = declaration.Name.Value;
+            VarName = declaration.Name.Value;
             this.isGlobal = isGlobal;
             this.isFuncArg = isFuncArg;
 
-            variableType = declaration.Type;
-
             if (declaration.Value is not ASTArrayIndex index)
             {
+                string val = "";
+                TypeSystem.Type type = Types[declaration.Type.DataType];
+
                 switch (declaration.Type.DataType)
                 {
-                    case DataType.STRING:
-                        if (declaration.Value == null) SetValue(@"\0", variableType);
+                    case ils.DataType.STRING:
+                        if (declaration.Value == null) val = @"\0";
                         break;
-                    case DataType.INT:
-                        if (declaration.Value == null) SetValue("0", variableType);
+                    case ils.DataType.INT:
+                        if (declaration.Value == null) val = "0";
                         break;
-                    case DataType.CHAR:
-                        if (declaration.Value == null) SetValue("0", variableType);
+                    case ils.DataType.CHAR:
+                        if (declaration.Value == null) val = "0";
                         break;
-                    case DataType.BOOL:
-                        if (declaration.Value == null) SetValue("0", variableType);
+                    case ils.DataType.BOOL:
+                        if (declaration.Value == null) val = "0";
                         break;
-                    case DataType.IDENTIFIER:
-                        if (declaration.Value == null) SetValue("[]", variableType);
+                    case ils.DataType.IDENTIFIER:
+                        if (declaration.Value == null) val = "[]";
                         break;
-                    case DataType.ARRAY:
-                        if (declaration.Type is ArrayType arrayType)
-                            if (declaration.Value == null)
-                                SetValue($"{arrayType.length * 4}", variableType);
+                    case ils.DataType.ARRAY:
+                        if (declaration.Type is ArrayType arrayType && declaration.Value == null) val = $"{arrayType.length * 4}";
                         break;
                 }
+
+                SetValue(new VarValue(type, val));
             }
-        }
-
-        public override string GetString()
-        {
-            return $"({Name}, {guid}, {variableType.Name}, {value})";
-        }
-
-        public override string GetValueAsString()
-        {
-            return guid.ToString();
         }
     }
 }

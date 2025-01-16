@@ -9,44 +9,34 @@ namespace ils.IR.Variables
 {
     public abstract class BaseVariable : IRNode
     {
-        public string variableName = "";
-        public TypeSystem.Type variableType;
-        public string value { private set; get; }
-        public ArrayIndexedVariable indexedVar; //todo THATS STUPID FIX ME
+        public VarID ID { private set; get; }
+        public string VarName { protected set; get; }
+        public VarValue VarVal { protected set; get; }
+        public string Value => VarVal.Value;
+        public TypeSystem.Type DataType => VarVal.Type;
 
-        public IRNode lastUse = null;
-
-        public bool needsPreservedReg = false;
-
-        public string guid;
+        public bool NeedsPreservedReg = false;
 
         public BaseVariable()
         {
-            guid = NewId();
-            IRGenerator.AllVariables.Add(guid, this);
+            ID = NewId();
+            IRGenerator.AllVariables.Add(ID, this);
         }
 
-        public void SetValue(string val, TypeSystem.Type valType)
+        public void SetValue(VarValue val)
         {
-            variableType = valType;
-
-            value = val;
+            VarVal = val;
         }
 
-        public abstract string GetValueAsString();
-
-        public void AssignVariable(BaseVariable val)
+        public void AssignVariable(BaseVariable var)
         {
-            if (val is TempVariable) SetValue(val.GetValueAsString(), TypeSystem.Types[DataType.IDENTIFIER]);
-            if (val is NamedVariable) SetValue(val.GetValueAsString(), TypeSystem.Types[DataType.IDENTIFIER]);
-            if (val is LiteralVariable literalVar) SetValue(val.GetValueAsString(), literalVar.variableType);
-            if (val is FunctionReturnVariable) SetValue("rax", val.variableType);
-            if (val is ArrayVariable arrayVar) SetValue(val.GetValueAsString(), arrayVar.variableType);
+            SetValue(var.VarVal);
+           // if (val is FunctionReturnVariable) SetValue("rax", val.Type);
         }
 
-        public void UpdateDestroyAfter(IRNode node)
+        public override string GetString()
         {
-            lastUse = node;
+            return $"({Name}, {VarName}, {ID.ID}, {DataType.Name}, {Value})";
         }
     }
 }

@@ -22,7 +22,7 @@ namespace ils.IR
 
         public override string GetString()
         {
-            return $"({Name}, {a.variableName}, {b.variableName})";
+            return $"({Name}, {a.VarName}, {b.VarName})";
         }
     }
 }

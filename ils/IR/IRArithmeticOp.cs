@@ -43,7 +43,7 @@ namespace ils.IR
 
         public override string GetString()
         {
-            return $"({Name}, {resultLocation.guid} = {a.guid}, {b.guid})";
+            return $"({Name}, {resultLocation.ID.ID} = {a.ID.ID}, {b.ID.ID})";
         }
     }
 }

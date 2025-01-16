@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static ils.IRGenerator;
 
 namespace ils
 {
@@ -33,5 +34,7 @@ namespace ils
             // If no item matches the condition, return the default value for the type
             return default(T);
         }
+
+        public static VarID ToVarID(this string id) => new VarID(id);
     }
 }

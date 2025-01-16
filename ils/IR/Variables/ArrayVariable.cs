@@ -11,23 +11,17 @@ namespace ils.IR.Variables
     {
         public int Length;
 
-        public ArrayVariable(TypeSystem.Type varType, string value, int arrayLength)
+        public ArrayVariable(VarValue value, int arrayLength)
         {
             Name = "ARRAY_VAR";
-            variableType = varType;
-            SetValue(value, variableType);
+            SetValue(value);
 
             Length = arrayLength;
         }
 
         public override string GetString()
         {
-            return $"({Name}, {value})";
-        }
-
-        public override string GetValueAsString()
-        {
-            return value;
+            return $"({VarName}, {VarVal})";
         }
     }
 }

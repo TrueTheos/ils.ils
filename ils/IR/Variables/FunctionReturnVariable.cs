@@ -18,21 +18,10 @@ namespace ils.IR.Variables
         {
             Name = "FUNC_RETURN_VAR";
             this.funcName = funcName;
-            variableName = funcName;
-            variableType = varType;
+            VarName = funcName;
             this.index = index;
             this.call = call;
-            //SetValue(reg, variableType);
-        }
-
-        public override string GetString()
-        {
-            return $"({Name}, {variableName})";
-        }
-
-        public override string GetValueAsString()
-        {
-            return funcName + index.ToString();
+            SetValue(new VarValue(varType, "rax"));
         }
     }
 }

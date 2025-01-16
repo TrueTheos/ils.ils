@@ -72,7 +72,7 @@ namespace ils
             {
                 BaseVariable arg = arguments[0];
 
-                switch(arg.variableType.DataType)
+                switch(arg.DataType.DataType)
                 {
                     case DataType.INT: break;
                     default: ErrorHandler.Custom($"Function '{name}' requires int as argument!"); break;
@@ -82,7 +82,7 @@ namespace ils
 
                 if (arg is LiteralVariable)
                 {
-                    ILS.AsmGen.AutoMov(new ASMGenerator.RegAddress(RegType.rdi), new ASMGenerator.ValueAddress(arg.value));
+                    ILS.AsmGen.AutoMov(new ASMGenerator.RegAddress(RegType.rdi), new ASMGenerator.ValueAddress(arg.Value));
                 }
                 else
                 {
@@ -105,7 +105,7 @@ namespace ils
 
             private string GetFormat(BaseVariable var)
             {
-                switch (var.variableType.DataType)
+                switch (var.DataType.DataType)
                 {
                     case DataType.STRING:
                         return "strFormatNl";
@@ -116,7 +116,7 @@ namespace ils
                     case DataType.BOOL:
                         return "intFormatNl";
                     case DataType.IDENTIFIER:
-                        return GetFormat(IRGenerator.AllVariables[var.value]);
+                        return GetFormat(IRGenerator.AllVariables[var.Value.ToVarID()]);
                     case DataType.ARRAY:
                         ErrorHandler.Custom("Can't print arrays!");
                         return null;

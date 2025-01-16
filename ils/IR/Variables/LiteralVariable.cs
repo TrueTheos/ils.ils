@@ -9,41 +9,29 @@ namespace ils.IR.Variables
 {
     public class LiteralVariable : BaseVariable
     {
-        public LiteralVariable(string value, TypeSystem.Type type)
+        public LiteralVariable(VarValue value)
         {
             Name = "LIT_VAR";
-
-            variableType = type;
             //this.variableName = $"LIT_{literalVarsCount}_{value}";
 
-            if (type.DataType == DataType.STRING)
+            if (value.Type.DataType == ils.DataType.STRING)
             {
-                if (!IRGenerator.StringLiterals.Reverse.Contains(value))
+                if (!IRGenerator.StringLiterals.Reverse.Contains(value.Value))
                 {
                     string name = "STR_" + IRGenerator.StringLiterals.Forward.Count.ToString();
-                    IRGenerator.StringLiterals.Add(name, value);
-                    SetValue(name, variableType);
+                    IRGenerator.StringLiterals.Add(name, value.Value);
+                    SetValue(new VarValue(TypeSystem.Types[ils.DataType.STRING], name));
                 }
                 else
                 {
-                    SetValue(value, variableType);
+                    SetValue(value);
                 }
             }
             else
             {
-                variableName = value.ToString();
-                SetValue(value, variableType);
+                VarName = value.Value;
+                SetValue(value);
             }
-        }
-
-        public override string GetString()
-        {
-            return $"({Name}, {value})";
-        }
-
-        public override string GetValueAsString()
-        {
-            return value;
         }
     }
 }

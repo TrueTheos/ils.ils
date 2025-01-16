@@ -89,12 +89,12 @@ namespace ils
 
             public void GenerateStackVar(NamedVariable arg)
             {
-                if(StackVars.ContainsKey(arg.guid.ToString()))
+                if(StackVars.ContainsKey(arg.ID.ToString()))
                 {
                     return;
                 }
 
-                StackVars.Add(arg.guid.ToString(), new StackVar() { Offset = stackSize, var = arg });
+                StackVars.Add(arg.ID.ToString(), new StackVar() { Offset = stackSize, var = arg });
                 stackSize++;
             }
 
@@ -338,8 +338,8 @@ namespace ils
 
             foreach (var data in dataSection)
             {
-                AddAsm($"{data.Value.Name} {data.Value.Word.ShortVarSize} {data.Value.Var.value}");
-                if (data.Value.Var.variableType.DataType == DataType.ARRAY)
+                AddAsm($"{data.Value.Name} {data.Value.Word.ShortVarSize} {data.Value.Var.Value}");
+                if (data.Value.Var.DataType.DataType == DataType.ARRAY)
                 {
                     //ArrayVariable array = (ArrayVariable)data.Value.var;
                     //AddAsm($"{data.Value.name}_length dw {array.arrayLength}");
@@ -417,50 +417,50 @@ namespace ils
             {
                 if (namedVar.isGlobal)
                 {
-                    if (VarExists(namedVar.variableName))
+                    if (VarExists(namedVar.VarName))
                     {
-                        ErrorHandler.Custom($"Variable {namedVar.variableName} already exists!");
+                        ErrorHandler.Custom($"Variable {namedVar.VarName} already exists!");
                         return;
                     }
 
-                    switch (namedVar.variableType.DataType)
+                    switch (namedVar.DataType.DataType)
                     {
                         case DataType.CHAR:
-                            dataSection.Add(namedVar.variableName, new ReservedVariable()
+                            dataSection.Add(namedVar.VarName, new ReservedVariable()
                             {
-                                Name = namedVar.variableName,
+                                Name = namedVar.VarName,
                                 Word = words[1],
                                 Var = namedVar
                             });
                             break;
                         case DataType.INT:
-                            dataSection.Add(namedVar.variableName, new ReservedVariable()
+                            dataSection.Add(namedVar.VarName, new ReservedVariable()
                             {
-                                Name = namedVar.variableName,
+                                Name = namedVar.VarName,
                                 Word = words[8],
                                 Var = namedVar
                             });
                             break;
                         case DataType.BOOL:
-                            dataSection.Add(namedVar.variableName, new ReservedVariable()
+                            dataSection.Add(namedVar.VarName, new ReservedVariable()
                             {
-                                Name = namedVar.variableName,
+                                Name = namedVar.VarName,
                                 Word = words[1],
                                 Var = namedVar
                             });
                             break;
                         case DataType.STRING:
-                            dataSection.Add(namedVar.variableName, new ReservedVariable()
+                            dataSection.Add(namedVar.VarName, new ReservedVariable()
                             {
-                                Name = namedVar.variableName,
+                                Name = namedVar.VarName,
                                 Word = words[8],
                                 Var = namedVar
                             });
                             break;
                         case DataType.ARRAY:
-                            dataSection.Add(namedVar.variableName, new ReservedVariable()
+                            dataSection.Add(namedVar.VarName, new ReservedVariable()
                             {
-                                Name = namedVar.variableName,
+                                Name = namedVar.VarName,
                                 Word = words[8],
                                 Var = namedVar
                             });
@@ -473,26 +473,26 @@ namespace ils
                     if (!namedVar.isFuncArg)
                     {
                        
-                        if (namedVar.variableType.DataType == DataType.IDENTIFIER)
+                        if (namedVar.DataType.DataType == DataType.IDENTIFIER)
                         {
                             Address destination = GetLocation(namedVar, GetLocationUseCase.MovedTo, false);
                             Address source = GetLocation(IRGenerator.AllVariables.Values
-                                    .Where(x => x.guid.ToString() == namedVar.value).First(),
+                                    .Where(x => x.ID.ToString() == namedVar.Value).First(),
                                     GetLocationUseCase.None, false);
                             
                             AutoMov(destination, source);
                         }
-                        else if(namedVar.indexedVar != null)
+                        else if(namedVar.VarVal.IndexedVariable != null)
                         {
                             AutoMov(
                                 GetLocation(namedVar, GetLocationUseCase.MovedTo, false),
-                                GetLocation(namedVar.indexedVar, GetLocationUseCase.None, false)
+                                GetLocation(namedVar.VarVal.IndexedVariable, GetLocationUseCase.None, false)
                             );
                         }
                         else
                         {
                             AutoMov(GetLocation(namedVar, GetLocationUseCase.MovedTo, false),
-                                new ValueAddress(namedVar.value));
+                                new ValueAddress(namedVar.Value));
                         }
                     }
                 }
@@ -507,30 +507,29 @@ namespace ils
         {
             Register reg;
 
-            reg = GetRegister(var.variableName, var.needsPreservedReg);          
+            reg = GetRegister(var.VarName, var.NeedsPreservedReg);          
 
-            switch (var.variableType.DataType)
+            switch (var.DataType.DataType)
             {
                 case DataType.STRING:
                     Console.WriteLine("TODO 179");
                     break;
                 case DataType.INT:
-                    AutoMov(new RegAddress(reg.Type), new ValueAddress(var.value));
-                    break;
                 case DataType.CHAR:
-                    AutoMov(new RegAddress(reg.Type), new ValueAddress(var.value));
-                    break;
                 case DataType.BOOL:
-                    AutoMov(new RegAddress(reg.Type), new ValueAddress(var.value));
+                    AutoMov(new RegAddress(reg.Type), new ValueAddress(var.Value));
                     break;
                 case DataType.IDENTIFIER:
-                    AutoMov(new RegAddress(reg.Type), GetLocation(IRGenerator.AllVariables[var.value], GetLocationUseCase.None, false));
+                    AutoMov(new RegAddress(reg.Type), GetLocation(IRGenerator.AllVariables[var.Value.ToVarID()], GetLocationUseCase.None, false));
                     break;
                 case DataType.ARRAY:
                     ErrorHandler.Custom("Tego nie wolno");
                     break;
             }
         }
+
+        // TODO ADD A VALUE STRUCT FOR PASSING VALUES BETWEEN VARIABLES
+
 
         private void GenerateAssign(IRAssign asign)
         {
@@ -562,7 +561,7 @@ namespace ils
                     // AddAsm($"mov {_words[1].longName} [{asign.identifier}], {asign.value}");
                     break;
                 case DataType.IDENTIFIER:
-                    val = GetLocation(IRGenerator.AllVariables.Values.Where(x => x.variableName == asign.value).First(), GetLocationUseCase.None, false);
+                    val = GetLocation(IRGenerator.AllVariables.Values.Where(x => x.VarName == asign.value).First(), GetLocationUseCase.None, false);
                     if (val is RegAddress regAddress && regAddress.Reg == RegType.rbp)
                     {
                         Register reg = GetRegister("", false);
@@ -694,7 +693,7 @@ namespace ils
             {
                 if (namedB.isGlobal)
                 {
-                    switch (compare.b.variableType.DataType)
+                    switch (compare.b.DataType.DataType)
                     {
                         case DataType.STRING:
                             sizeB = "byte ";
@@ -823,7 +822,7 @@ namespace ils
         {
             if (var is TempVariable temp)
             {
-                if (occupiedRegs.Forward.TryGet(temp.variableName, out Register val))
+                if (occupiedRegs.Forward.TryGet(temp.VarName, out Register val))
                 {
                     /*if (useCase == GetLocationUseCase.Pointer)
                     {
@@ -843,7 +842,7 @@ namespace ils
                 else
                 {
                     GenerateTempVariable(temp);
-                    return new RegAddress(occupiedRegs.Forward[temp.variableName].Type);
+                    return new RegAddress(occupiedRegs.Forward[temp.VarName].Type);
                 }
             }
             else if (var is NamedVariable namedVar)
@@ -852,14 +851,14 @@ namespace ils
                 {
                     if (useCase == GetLocationUseCase.ComparedTo || useCase == GetLocationUseCase.MovedTo)
                     {
-                        return new MemoryAddress(dataSection[namedVar.variableName].Name, dataSection[namedVar.variableName].Word.LongVarSize);
+                        return new MemoryAddress(dataSection[namedVar.VarName].Name, dataSection[namedVar.VarName].Word.LongVarSize);
                     }
 
-                    return new MemoryAddress(dataSection[namedVar.variableName].Name, "");
+                    return new MemoryAddress(dataSection[namedVar.VarName].Name, "");
                 }
                 else
                 {
-                    if (!currentScope.StackVars.TryGetValue(namedVar.guid.ToString(), out StackVar val))
+                    if (!currentScope.StackVars.TryGetValue(namedVar.ID.ToString(), out StackVar val))
                     {
                         currentScope.GenerateStackVar(namedVar);
                     }
@@ -868,16 +867,16 @@ namespace ils
                     {
                         if (useCase == GetLocationUseCase.ComparedTo || useCase == GetLocationUseCase.MovedTo)
                         {
-                            return new MemoryAddress($"rbp+{16 + currentScope.StackVars[namedVar.guid.ToString()].Offset * 8}", "qword");
+                            return new MemoryAddress($"rbp+{16 + currentScope.StackVars[namedVar.ID.ToString()].Offset * 8}", "qword");
                         }
                         else
                         {
-                            return new MemoryAddress($"rbp+{16 + currentScope.StackVars[namedVar.guid.ToString()].Offset * 8}", "");
+                            return new MemoryAddress($"rbp+{16 + currentScope.StackVars[namedVar.ID.ToString()].Offset * 8}", "");
                         }
                     }
                     else
                     {
-                        int offset = currentScope.StackVars[namedVar.guid.ToString()].Offset * 8;
+                        int offset = currentScope.StackVars[namedVar.ID.ToString()].Offset * 8;
                         if (offset == 0) offset = 8;
                         if (useCase == GetLocationUseCase.ComparedTo || useCase == GetLocationUseCase.MovedTo)
                         {
@@ -900,13 +899,13 @@ namespace ils
                 switch (indexAddress)
                 {
                     case RegAddress regAddress:
-                        AddAsm($"mov rsi, [{indexed.Array.variableName} + {regAddress.Reg} * 8]");
+                        AddAsm($"mov rsi, [{indexed.Array.VarName} + {regAddress.Reg} * 8]");
                         break;
                     case MemoryAddress memAddress:
-                        AddAsm($"mov rsi, [{indexed.Array.variableName} + {memAddress.Address}]");
+                        AddAsm($"mov rsi, [{indexed.Array.VarName} + {memAddress.Address}]");
                         break;
                     case ValueAddress valAddress:
-                        AddAsm($"mov rsi, [{indexed.Array.variableName} + {valAddress.Value}]");
+                        AddAsm($"mov rsi, [{indexed.Array.VarName} + {valAddress.Value}]");
                         break;
                 }
 
@@ -914,12 +913,12 @@ namespace ils
             }
             else if (var is LiteralVariable lit && generateLiteral)
             {
-                if (lit.variableType.DataType == DataType.STRING)
+                if (lit.DataType.DataType == DataType.STRING)
                 {
-                    return new ValueAddress(lit.value);
+                    return new ValueAddress(lit.Value);
                 }
 
-                if (occupiedRegs.Forward.TryGet(lit.variableName, out Register val))
+                if (occupiedRegs.Forward.TryGet(lit.VarName, out Register val))
                 {
                     return new RegAddress(val.Type);
                 }
@@ -927,7 +926,7 @@ namespace ils
                 {
                     GenerateTempVariable(lit);
 
-                    return new RegAddress(occupiedRegs.Forward[lit.variableName].Type);
+                    return new RegAddress(occupiedRegs.Forward[lit.VarName].Type);
                 }
             }
             else if (var is FunctionReturnVariable regvar)
@@ -938,7 +937,7 @@ namespace ils
                 return new RegAddress(RegType.rax);
             }
 
-            return new ValueAddress(var.value);
+            return new ValueAddress(var.Value);
         }
 
         public struct Word
